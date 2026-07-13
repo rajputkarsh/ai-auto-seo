@@ -1,0 +1,18 @@
+{
+  "name": "@awe/pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@awe/core": "workspace:*",
+    "@awe/extractor": "workspace:*",
+    "@awe/rules": "workspace:*",
+    "@awe/reasoning": "workspace:*",
+    "@awe/remediation": "workspace:*"
+  }
+}

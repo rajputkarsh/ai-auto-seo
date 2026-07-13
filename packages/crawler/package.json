@@ -1,0 +1,16 @@
+{
+  "name": "@awe/crawler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@awe/core": "workspace:*",
+    "@awe/extractor": "workspace:*",
+    "playwright-core": "^1.49.0"
+  }
+}

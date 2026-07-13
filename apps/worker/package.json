@@ -1,0 +1,10 @@
+{
+  "name": "@awe/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@awe/pipeline": "workspace:*",
+    "bullmq": "^5.34.0"
+  }
+}
