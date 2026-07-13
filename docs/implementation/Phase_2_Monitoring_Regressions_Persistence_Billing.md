@@ -241,6 +241,7 @@ Implement `llmReasoner: Reasoner` so the swap is a one-line change in `runScan`.
 - **Epic E — Billing & entitlements** (§8)
 - **Epic F — Outcome tracking & metrics/cost dashboard** (§9–10)
 - **Epic G — Security/verification hardening** (§11)
+- **Epic H — Customer Dashboard v1** — the first-class, role-aware end-user control surface (`apps/web`, Next.js): auth + org multi-tenancy, onboarding + ownership verification, Home/Property/Findings/Finding-detail, **apply/dismiss** → outcomes, remediation activity, regressions/alerts, Settings (members/RBAC, Stripe portal), WCAG AA. Full spec in `Customer_Dashboard.md` §4–6, §10.
 
 ---
 

@@ -154,6 +154,7 @@ export const cmsAdapter: RemediationAdapter = {
 - **Epic D — First headless CMS adapter** (§5)
 - **Epic E — cmsAdapter + review/approve UX** (§6)
 - **Epic F — Write-back verification** (§8)
+- **Epic G — Dashboard: CMS affordances** — connect-CMS UI and the **draft review + one-click approve** flow, the non-technical owner's primary surface (`Customer_Dashboard.md` §4 P4).
 
 ---
 
