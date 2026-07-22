@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  blocksAllCrawling,
-  countSitemapUrls,
-  fetchSiteWide,
-  sitemapUrlFromRobots,
-  type TextFetcher,
-} from "./sitewide";
+import { blocksAllCrawling, sitemapUrlFromRobots } from "./robots";
+import { countSitemapUrls } from "./sitemap";
+import { fetchSiteWide, type TextFetcher } from "./sitewide";
 
 describe("blocksAllCrawling", () => {
   it("detects a wildcard site-wide disallow", () => {

@@ -75,13 +75,40 @@ export async function runScan(
 
   const regressions = options.previous ? diffSurfaces(options.previous, surface) : [];
   const findings = prioritize(mergeFindings(evaluate([surface]), regressions));
+
+  const result: ScanResult = {
+    url,
+    surface,
+    items: await remediate(findings, surface, html, url, reasoner),
+  };
+  const combined = buildCombinedPatch(
+    html,
+    url,
+    result.items,
+    new Set(findings.map((f) => f.issueType)),
+  );
+  if (combined) result.combinedPatch = combined;
+  return result;
+}
+
+/**
+ * Turn findings for one page into reasoned, remediated, verified items.
+ * Shared by the single-page and whole-site entry points.
+ */
+export async function remediate(
+  findings: Finding[],
+  surface: SeoSurface,
+  html: string,
+  url: string,
+  reasoner: Reasoner,
+): Promise<ScanResultItem[]> {
   const ctx: SiteContext = { url, html };
   const baseline = new Set(findings.map((f) => f.issueType));
 
   // Page text is only needed by a model-backed reasoner; extract it once.
   const pageText = extractText(html);
 
-  const items = await Promise.all(
+  return Promise.all(
     findings.map(async (finding): Promise<ScanResultItem> => {
       const instruction = await reasoner.reason(finding, surface, { pageText });
       const rec = await recommendationAdapter.render(instruction, ctx);
@@ -112,11 +139,6 @@ export async function runScan(
       return item;
     }),
   );
-
-  const result: ScanResult = { url, surface, items };
-  const combined = buildCombinedPatch(html, url, items, baseline);
-  if (combined) result.combinedPatch = combined;
-  return result;
 }
 
 /**

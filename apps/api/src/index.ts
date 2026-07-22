@@ -1,6 +1,6 @@
 import { resolveTxt } from "node:dns/promises";
 import { getConfig } from "@awe/config";
-import { fetchCrawl } from "@awe/crawler";
+import { crawlSite, fetchCrawl } from "@awe/crawler";
 import {
   type VerificationDeps,
   type VerificationMethod,
@@ -8,7 +8,7 @@ import {
   verificationToken,
   verifyOwnership,
 } from "@awe/ownership";
-import { runScan } from "@awe/pipeline";
+import { runScan, runSiteScan } from "@awe/pipeline";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { z } from "zod";
@@ -37,6 +37,13 @@ const scanBody = z.object({
 });
 
 const propertyBody = z.object({ url: z.string().url() });
+
+const siteScanBody = z.object({
+  url: z.string().url(),
+  maxPages: z.coerce.number().int().positive().max(200).optional(),
+  concurrency: z.coerce.number().int().positive().max(10).optional(),
+  minDelayMs: z.coerce.number().int().nonnegative().max(10_000).optional(),
+});
 
 const verifyBody = z.object({
   url: z.string().url(),
@@ -109,6 +116,57 @@ app.post("/scan", async (req, reply) => {
   );
 
   return result;
+});
+
+/**
+ * POST /site-scan { url, maxPages?, concurrency?, minDelayMs? }
+ *
+ * Crawls a whole property and evaluates every page together, so cross-page
+ * rules (duplicate titles) and property-level rules (robots.txt, sitemap) can
+ * fire — none of which a single-page scan can detect.
+ */
+app.post("/site-scan", async (req, reply) => {
+  const parsed = siteScanBody.safeParse(req.body);
+  if (!parsed.success) {
+    reply.code(400);
+    return errorResponse("invalid_request", "Request body failed validation.", parsed.error.issues);
+  }
+
+  const { url, maxPages, concurrency, minDelayMs } = parsed.data;
+  const startedAt = Date.now();
+
+  let crawl: Awaited<ReturnType<typeof crawlSite>>;
+  try {
+    crawl = await crawlSite(url, { maxPages, concurrency, minDelayMs });
+  } catch (err) {
+    req.log.warn({ err, url }, "site crawl failed");
+    reply.code(502);
+    return errorResponse("crawl_failed", `Could not crawl ${url}.`);
+  }
+
+  const result = await runSiteScan(crawl.baseUrl, crawl.pages, { siteWide: crawl.siteWide });
+
+  metrics.scans += 1;
+  metrics.findings += result.issueCount;
+  for (const page of result.pages) {
+    for (const item of page.items) {
+      const key = item.finding.issueType;
+      metrics.byIssueType[key] = (metrics.byIssueType[key] ?? 0) + 1;
+    }
+  }
+  req.log.info(
+    {
+      url,
+      pages: result.pages.length,
+      discovered: crawl.discovered,
+      skipped: crawl.skipped.length,
+      findings: result.issueCount,
+      durationMs: Date.now() - startedAt,
+    },
+    "site scan complete",
+  );
+
+  return { ...result, crawl: { discovered: crawl.discovered, skipped: crawl.skipped } };
 });
 
 /**

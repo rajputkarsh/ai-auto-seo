@@ -2,7 +2,13 @@
 
 > **One-liner:** Turn the one-shot scanner into a continuously-monitored product: crawl any property on a schedule, persist surfaces into a Website Knowledge Graph, detect regressions as surface deltas, swap in an LLM-backed reasoner behind the existing interface, and charge for it — reaching the **first paying customer** with a verified **≥80% gross margin**.
 
-**Status:** ☐ Not started. Depends on Phase 1 contracts and packages.
+**Status:** **In progress.** Three pieces built and verified without infrastructure:
+
+- ✅ **Regression detection** (`@awe/graph`) — `diffSurfaces` + `mergeFindings`; negative-delta-only, before/after evidence, regression-first ranking.
+- ✅ **LLM reasoner + cost governor** (`@awe/reasoning/llm`) — value-based routing (capable model only for generative copy, cheap model only for the ambiguous `noindex` call, rules elsewhere at zero cost), fail-soft fallback, output validation + HTML escaping, spend ceiling with per-call cost telemetry.
+- ✅ **Multi-page site scan** (`@awe/crawler.crawlSite` + `@awe/pipeline.runSiteScan`) — sitemap/robots discovery, robots-rule compliance, concurrency cap, global rate limit, page budget; **all surfaces evaluated together** so cross-page rules can fire. Exposed as `POST /site-scan`.
+
+**Blocked on infrastructure** (not started): persistence (Postgres), billing (Stripe), the crawler pool at scale, dashboards, and Superadmin console. The LLM path is verified by construction and typecheck but has **not** been exercised against the live API.
 
 ---
 
