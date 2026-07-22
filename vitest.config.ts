@@ -11,6 +11,7 @@ export default defineConfig({
       "@awe/crawler": r("./packages/crawler/src/index.ts"),
       "@awe/eval": r("./packages/eval/src/index.ts"),
       "@awe/extractor": r("./packages/extractor/src/index.ts"),
+      "@awe/graph": r("./packages/graph/src/index.ts"),
       "@awe/logger": r("./packages/logger/src/index.ts"),
       "@awe/ownership": r("./packages/ownership/src/index.ts"),
       "@awe/pipeline": r("./packages/pipeline/src/index.ts"),

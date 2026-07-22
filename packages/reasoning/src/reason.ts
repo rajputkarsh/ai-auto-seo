@@ -8,8 +8,32 @@ import type { Finding, IssueType, RemediationInstruction, SeoSurface } from "@aw
  * swapped in behind the same interface for ambiguous or generative cases without
  * changing any downstream code.
  */
+/** Optional page context a reasoner may use. Ignored by the deterministic one. */
+export interface ReasoningContext {
+  /** Visible text of the page, truncated — lets a model write real copy. */
+  pageText?: string;
+}
+
 export interface Reasoner {
-  reason(finding: Finding, surface: SeoSurface): RemediationInstruction;
+  /**
+   * May return synchronously (deterministic) or asynchronously (LLM-backed).
+   * Callers must `await` the result; that single widening is all the seam
+   * needed to accept a model-backed implementation.
+   */
+  reason(
+    finding: Finding,
+    surface: SeoSurface,
+    context?: ReasoningContext,
+  ): RemediationInstruction | Promise<RemediationInstruction>;
+}
+
+/**
+ * A reasoner that is guaranteed to answer synchronously. Callers that depend on
+ * an immediate result (and the deterministic reasoner's own tests) keep precise
+ * typing, while still satisfying the async-tolerant `Reasoner` interface.
+ */
+export interface SyncReasoner extends Reasoner {
+  reason(finding: Finding, surface: SeoSurface, context?: ReasoningContext): RemediationInstruction;
 }
 
 const WHY: Partial<Record<IssueType, string>> = {
@@ -31,11 +55,17 @@ const WHY: Partial<Record<IssueType, string>> = {
     "Without a sitemap, search engines must discover pages by crawling links alone, so new or deep pages are indexed slowly or missed.",
   robots_txt_blocks_crawling:
     "robots.txt disallows crawling of the whole site, so search engines cannot fetch any page — this removes the site from search entirely.",
+  page_unavailable:
+    "A page that previously resolved now returns an error, so it will be dropped from the index and any links pointing to it are wasted.",
+  missing_structured_data:
+    "Structured data that previously earned rich results has been removed, so those enhanced listings will disappear.",
 };
 
 const CONFIDENCE: Partial<Record<IssueType, number>> = {
   robots_txt_blocks_crawling: 0.99,
+  page_unavailable: 0.99,
   missing_title: 0.99,
+  missing_structured_data: 0.9,
   missing_canonical: 0.98,
   noindex_unexpected: 0.97,
   sitemap_missing: 0.9,
@@ -48,7 +78,7 @@ const CONFIDENCE: Partial<Record<IssueType, number>> = {
   multiple_h1: 0.6,
 };
 
-export const deterministicReasoner: Reasoner = {
+export const deterministicReasoner: SyncReasoner = {
   reason(finding, surface) {
     return {
       finding,
@@ -156,6 +186,16 @@ function canonicalFix(
       return {
         diffHint:
           "Remove the site-wide `Disallow: /` from robots.txt (or scope it to the paths that genuinely must stay private).",
+      };
+    case "page_unavailable":
+      return {
+        diffHint:
+          "Restore the page, or if the removal was intentional, redirect (301) the old URL to its replacement so its links and ranking carry over.",
+      };
+    case "missing_structured_data":
+      return {
+        diffHint:
+          "Restore the JSON-LD block that was removed, then confirm with the Rich Results test.",
       };
     default:
       return {};

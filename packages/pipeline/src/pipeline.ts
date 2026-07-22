@@ -5,7 +5,8 @@ import type {
   SeoSurface,
   SiteContext,
 } from "@awe/core";
-import { extractSurface } from "@awe/extractor";
+import { extractSurface, extractText } from "@awe/extractor";
+import { diffSurfaces, mergeFindings } from "@awe/graph";
 import { deterministicReasoner, type Reasoner } from "@awe/reasoning";
 import {
   applyHeadInsert,
@@ -51,19 +52,38 @@ export interface ScanResult {
  * The Reasoner is injectable so an LLM-backed reasoner can replace the deterministic
  * one without changing callers.
  */
+export interface ScanOptions {
+  reasoner?: Reasoner;
+  /**
+   * The same URL's surface from a previous scan. When supplied, issues that are
+   * newly introduced are reported as regressions with before/after evidence and
+   * ranked above long-standing issues of the same severity.
+   */
+  previous?: SeoSurface;
+  /** Property-level facts (robots.txt / sitemap) fetched once per site. */
+  siteWide?: SeoSurface["siteWide"];
+}
+
 export async function runScan(
   html: string,
   url: string,
-  reasoner: Reasoner = deterministicReasoner,
+  options: ScanOptions = {},
 ): Promise<ScanResult> {
+  const reasoner = options.reasoner ?? deterministicReasoner;
   const surface = extractSurface(html, url);
-  const findings = prioritize(evaluate([surface]));
+  if (options.siteWide) surface.siteWide = options.siteWide;
+
+  const regressions = options.previous ? diffSurfaces(options.previous, surface) : [];
+  const findings = prioritize(mergeFindings(evaluate([surface]), regressions));
   const ctx: SiteContext = { url, html };
   const baseline = new Set(findings.map((f) => f.issueType));
 
+  // Page text is only needed by a model-backed reasoner; extract it once.
+  const pageText = extractText(html);
+
   const items = await Promise.all(
     findings.map(async (finding): Promise<ScanResultItem> => {
-      const instruction = reasoner.reason(finding, surface);
+      const instruction = await reasoner.reason(finding, surface, { pageText });
       const rec = await recommendationAdapter.render(instruction, ctx);
       const item: ScanResultItem = { finding, instruction, recommendation: rec.artifact };
 
@@ -161,13 +181,15 @@ function buildCombinedPatch(
 const SEVERITY_RANK: Record<Finding["severity"], number> = { high: 0, medium: 1, low: 2 };
 
 /**
- * Order findings most-damaging first, tie-broken by issue type so output is
- * stable across runs (important for diffable reports and snapshot tests).
+ * Order findings most-damaging first: severity, then regressions ahead of
+ * long-standing issues of equal severity (something just broke and is probably
+ * still revertible), then issue type so output is stable across runs.
  */
 export function prioritize(findings: Finding[]): Finding[] {
   return [...findings].sort(
     (a, b) =>
       SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+      Number(b.isRegression ?? false) - Number(a.isRegression ?? false) ||
       a.issueType.localeCompare(b.issueType),
   );
 }

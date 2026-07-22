@@ -11,6 +11,7 @@
   "dependencies": {
     "@awe/core": "workspace:*",
     "@awe/extractor": "workspace:*",
+    "@awe/graph": "workspace:*",
     "@awe/rules": "workspace:*",
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*"

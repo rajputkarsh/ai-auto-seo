@@ -13,7 +13,13 @@ export const recommendationAdapter: RemediationAdapter = {
     const pct = Math.round(instruction.confidence * 100);
     const fix =
       instruction.canonicalFix.html ?? instruction.canonicalFix.diffHint ?? "See guidance.";
+    const { finding } = instruction;
     const artifact = [
+      // A regression is newly introduced — call it out first, since it is both
+      // more urgent and usually traceable to the most recent deploy.
+      ...(finding.isRegression
+        ? [`⚠ REGRESSION — new since the previous scan (was: ${format(finding.before)})`]
+        : []),
       `Issue: ${instruction.finding.issueType}`,
       `What's wrong: ${instruction.whatIsWrong}`,
       `Why it matters: ${instruction.whyItMatters}`,
@@ -25,3 +31,10 @@ export const recommendationAdapter: RemediationAdapter = {
     return { policy: "recommendation", instruction, artifact };
   },
 };
+
+/** Render a before-value for the regression banner. */
+function format(value: unknown): string {
+  if (value === null || value === undefined) return "absent";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}
