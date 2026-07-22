@@ -1,0 +1,6 @@
+{
+  "description": "Page with three H1 elements. Isolates multiple_h1 (low-severity advisory).",
+  "pages": [
+    { "file": "page.html", "url": "https://example.com/features", "expected": ["multiple_h1"] }
+  ]
+}

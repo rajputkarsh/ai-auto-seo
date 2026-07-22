@@ -1,6 +1,15 @@
 import type { Finding } from "@awe/core";
 import type { Rule } from "../rule";
 
+/**
+ * Canonical URL checks.
+ *
+ * Note: the extractor resolves relative canonicals against the page URL before
+ * this runs, so `/pricing` arrives absolute and is NOT flagged — relative
+ * canonicals are valid and search engines resolve them. `malformed_canonical`
+ * therefore fires only on values that remain unusable after resolution, such as
+ * a `javascript:` or `mailto:` href.
+ */
 export const canonicalRule: Rule = {
   id: "canonical",
   evaluate({ surface }) {

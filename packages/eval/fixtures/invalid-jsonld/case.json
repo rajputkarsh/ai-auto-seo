@@ -1,0 +1,10 @@
+{
+  "description": "Page whose JSON-LD block does not parse. Isolates invalid_structured_data. Note a healthy page with NO JSON-LD must stay silent — absence is not an issue.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://example.com/products/kettle",
+      "expected": ["invalid_structured_data"]
+    }
+  ]
+}

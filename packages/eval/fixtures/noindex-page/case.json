@@ -1,0 +1,10 @@
+{
+  "description": "Otherwise-healthy page carrying an explicit noindex directive. Isolates noindex_unexpected.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://example.com/launch",
+      "expected": ["noindex_unexpected"]
+    }
+  ]
+}

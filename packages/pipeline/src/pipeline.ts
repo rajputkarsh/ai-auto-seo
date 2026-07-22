@@ -33,7 +33,7 @@ export async function runScan(
   reasoner: Reasoner = deterministicReasoner,
 ): Promise<ScanResult> {
   const surface = extractSurface(html, url);
-  const findings = evaluate([surface]);
+  const findings = prioritize(evaluate([surface]));
   const ctx: SiteContext = { url, html };
 
   const items = await Promise.all(
@@ -50,4 +50,18 @@ export async function runScan(
   );
 
   return { url, surface, items };
+}
+
+const SEVERITY_RANK: Record<Finding["severity"], number> = { high: 0, medium: 1, low: 2 };
+
+/**
+ * Order findings most-damaging first, tie-broken by issue type so output is
+ * stable across runs (important for diffable reports and snapshot tests).
+ */
+export function prioritize(findings: Finding[]): Finding[] {
+  return [...findings].sort(
+    (a, b) =>
+      SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+      a.issueType.localeCompare(b.issueType),
+  );
 }

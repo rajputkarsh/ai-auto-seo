@@ -1,0 +1,10 @@
+{
+  "description": "Canonical that stays unusable after resolution (javascript: href). This is what malformed_canonical is for — contrast with relative-canonical, which resolves fine and must stay silent.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://example.com/offers",
+      "expected": ["malformed_canonical"]
+    }
+  ]
+}

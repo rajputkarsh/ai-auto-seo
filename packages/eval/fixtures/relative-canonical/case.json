@@ -1,10 +1,6 @@
 {
-  "description": "Canonical present but relative rather than absolute — near-miss case that must be malformed_canonical, NOT missing_canonical.",
+  "description": "TRUE-NEGATIVE control: a relative canonical (/collections/sale) is valid HTML that search engines resolve. The extractor resolves it against the page URL, so it must NOT be reported as malformed. See invalid-canonical for a genuinely broken one.",
   "pages": [
-    {
-      "file": "page.html",
-      "url": "https://store.example.net/collections/sale",
-      "expected": ["malformed_canonical"]
-    }
+    { "file": "page.html", "url": "https://store.example.net/collections/sale", "expected": [] }
   ]
 }

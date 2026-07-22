@@ -2,7 +2,7 @@
 
 > **One-liner:** Point the platform at any website, on any stack, and get an accurate, prioritized list of technical-SEO issues — each with what's wrong, why it matters, expected impact, a confidence score, and an exact fix delivered as a copy-paste snippet (Recommendation rail) or a unified diff (Patch rail). No infrastructure, no LLM key, no framework adapters.
 
-**Status:** Core pipeline **built & verified** (19 tests, clean typecheck, CLI + API working end-to-end). Remaining Phase-1 scope (full issue catalog, ownership verification, minimal UI, hosting) is specified below and marked ☐.
+**Status:** **Substantially complete.** Pipeline, the issue catalog (9 issue types across 6 rules), deterministic reasoning, both remediation rails, prioritization, CLI, and a hardened API are built and verified — 44 tests green, 16 golden cases / 18 pages at **100% precision & recall**, CI-enforced. Remaining: ownership verification (Epic D), site-wide `robots.txt`/`sitemap.xml` rules, and deploy (Epic E), all marked ☐ below.
 
 ---
 
@@ -119,34 +119,43 @@ The reasoner produces the instruction; **adapters never feed back into reasoning
 - Robust to malformed input: invalid JSON-LD is flagged, never thrown.
 - **Rendering source:** `@awe/crawler.crawl()` (Playwright, handles CSR/SPA) or `fetchCrawl()` (SSR/static). Phase 1 accepts HTML directly; the crawler is exercised fully in Phase 2's continuous pipeline.
 
+**Done ✅**
+- ✅ **Relative URLs resolved against the page URL before evaluation.** `resolveUrl()` turns `/pricing` into an absolute URL, so relative canonicals — which are valid HTML that search engines resolve — are no longer reported as malformed. This closed the false positive listed in §14 and changed `malformed_canonical` to mean "unusable after resolution" (e.g. a `javascript:` href).
+
 **Remaining ☐**
-- ☐ Site-wide fetches: `robots.txt`, `sitemap.xml` presence/among-URL counts (feeds robots/sitemap rules).
-- ☐ Resolve relative canonicals/OG URLs against the page URL before evaluation.
+- ☐ Site-wide fetches: `robots.txt`, `sitemap.xml` presence/URL counts (feeds the sitemap/robots rules).
+- ☐ Resolve OG/Twitter URLs (lower value than canonical; no rule consumes them yet).
 
 ---
 
 ## 6. Issue Catalog
 
-**Shipped (deterministic rules, tested)**
+**Shipped ✅** (deterministic, unit-tested, each with golden fixtures at 100% precision)
 
 | Rule | Issues | Severity |
 |---|---|---|
-| `canonicalRule` | `missing_canonical`, `malformed_canonical` | high / medium |
 | `titleRule` | `missing_title`, `duplicate_title` | high / medium |
 | `metaDescriptionRule` | `missing_meta_description` | medium |
+| `canonicalRule` | `missing_canonical`, `malformed_canonical` | high / medium |
+| `robotsRule` | `noindex_unexpected` | high |
+| `structuredDataRule` | `invalid_structured_data` | medium |
+| `headingRule` | `missing_h1`, `multiple_h1` | medium / low |
 
-**Remaining Phase-1 rules ☐** (each needs golden fixtures + ≥95% precision before shipping)
+**Deliberate exclusions** — precision-first calls, not oversights. Each would fire on a large share of healthy pages, and a noisy rule teaches users to ignore findings:
 
-| Rule | Issues | Signal |
+| Not shipped | Why |
+|---|---|
+| `missing_structured_data` | JSON-LD is optional and page-type dependent; "no JSON-LD" fires on most healthy pages. Only *broken* JSON-LD is an unambiguous defect. |
+| `socialRule` (missing OG/Twitter) | Affects social sharing, not search ranking; absent on a large share of otherwise-healthy pages. Low severity, high fire rate. |
+
+**Remaining Phase-1 rules ☐**
+
+| Rule | Issues | Blocked on |
 |---|---|---|
-| ☐ `robotsRule` | `noindex_unexpected` | `robots.index === false` where indexable expected |
-| ☐ `sitemapRobotsRule` | robots.txt blocks / sitemap missing | site-wide fetch |
-| ☐ `structuredDataRule` | `missing_structured_data`, `invalid_structured_data` | JSON-LD absent / `valid=false` |
-| ☐ `headingRule` | `missing_h1`, `multiple_h1` | `h1Count` 0 or >1 |
-| ☐ `socialRule` | missing OG/Twitter | empty `openGraph`/`twitter` |
-| ☐ `statusRule` | broken links / bad status | non-2xx, redirect chains (needs link crawl) |
+| ☐ `sitemapRobotsRule` | robots.txt blocks / sitemap missing | site-wide fetch (§5) |
+| ☐ `statusRule` | broken links / bad status | link crawl (arrives with the Phase-2 crawler pool) |
 
-The `IssueType` union in `@awe/core` already enumerates these; adding a rule = new `Rule` + fixtures + register in `defaultRules`.
+Adding a rule = new `Rule` + golden fixtures + register in `defaultRules`.
 
 ---
 
@@ -156,8 +165,9 @@ The `IssueType` union in `@awe/core` already enumerates these; adding a rule = n
 - Title suggestions are derived from the URL slug as a starting point.
 - **Extensibility:** the `Reasoner` interface is the swap point for the Phase-2 LLM reasoner; no downstream code changes when it's replaced.
 
-**Remaining ☐**
-- ☐ Confidence priors + copy for the new issue types added in §6.
+**Done ✅**
+- ✅ Confidence priors + `whyItMatters` copy for all 9 shipped issue types. Priors encode certainty: `missing_title` 0.99 down to `multiple_h1` 0.60 (legal under HTML5 sectioning, so advisory).
+- ✅ **Head-only invariant.** The patch rail inserts `canonicalFix.html` before `</head>`, so the reasoner supplies `html` *only* for genuine head insertions. Body-level fixes (`missing_h1`, `multiple_h1`) and replacements (`noindex_unexpected`, `invalid_structured_data`) ship `diffHint` guidance instead — inserting a second robots meta would not lift a `noindex` (engines honour the most restrictive), and an `<h1>` in `<head>` would be invalid. Locked by tests in `packages/pipeline/src/prioritize.test.ts`.
 
 ---
 
@@ -171,7 +181,7 @@ The `IssueType` union in `@awe/core` already enumerates these; adding a rule = n
 
 **Remaining ☐**
 - ☐ Multi-fix batching: emit one combined diff per page when several head-insertions apply.
-- ☐ Non-head fixes (e.g., fixing an existing malformed tag rather than inserting) — replace-in-place diffs.
+- ☐ **Replace-in-place diffs** — needed to auto-fix `noindex_unexpected`, `malformed_canonical`, and `invalid_structured_data`, which currently ship as guidance only (see §7). This is the single biggest remaining lever on patch coverage.
 
 ---
 
@@ -183,9 +193,15 @@ The `IssueType` union in `@awe/core` already enumerates these; adding a rule = n
 - `GET /healthz` → `{ ok: true }`
 - `POST /scan { url, html }` → `ScanResult` (`surface` + `items[]` with `finding`, `instruction`, `recommendation`, `patch?`).
 
+**Done ✅**
+- ✅ `POST /scan { url }` (no `html`) fetches server-side via `@awe/crawler.fetchCrawl` — verified end-to-end against a live site.
+- ✅ zod request validation + structured error shape `{ error: { code, message, details? } }` (`invalid_request` → 400, `fetch_failed` → 502).
+- ✅ `GET /metrics` with in-process counters (scans, findings, per-issue-type) + per-scan timing in logs.
+- ✅ Findings **prioritized** high → medium → low, tie-broken by issue type for stable output.
+
 **Remaining ☐**
-- ☐ `POST /scan { url }` variant that crawls server-side via `@awe/crawler` (bridges to Phase 2).
-- ☐ Request validation (zod) + structured error shape + rate limiting.
+- ☐ Rate limiting + auth (needed before public exposure).
+- ☐ Playwright-rendered `POST /scan { url }` for client-rendered pages (Phase-2 crawler pool; `fetchCrawl` covers SSR/static today).
 
 ---
 
@@ -200,27 +216,32 @@ Before scheduled crawling (Phase 2) we must verify the requester owns the proper
 
 ## 11. Testing & Eval (the precision gate)
 
-**Unit tests (present):** extractor (4), rules (6), reasoning (3), remediation (4), pipeline e2e (2) — 19 total, all green.
+**Unit tests ✅:** extractor (4), rules engine (6), rules catalog (11), reasoning (3), remediation (4), pipeline e2e (2), prioritization + patch safety (4), config (4), eval harness (6) — **44 total, all green.**
 
-**Golden-set eval harness ☐** (the gate for every rule)
-- ☐ A `packages/eval` (or `test/golden`) corpus of 15–20 real sites across stacks (WordPress, Shopify, Next.js, static HTML, .NET), each with labeled expected findings and seeded regressions.
-- ☐ Runner computes **precision & recall per rule**; fails CI if any shipped rule < 95% precision.
-- ☐ Snapshot the `SeoSurface` per fixture so extractor changes are reviewable diffs.
-- ☐ Wire into GitHub Actions as a required check (a regression in our detector fails our build).
+**Golden-set eval harness ✅** (built in Phase 0; the gate for every rule)
+- ✅ `packages/eval` corpus: **16 cases / 18 pages** across Next.js, WordPress, Shopify and plain HTML, each labelled with expected issue types.
+- ✅ Runner computes **precision & recall per issue type**; exits non-zero below 95% precision. Currently **100% / 100%** with zero false positives.
+- ✅ Wired into GitHub Actions as a required check; `pnpm verify` runs it locally.
+- ✅ Gate proven non-vacuous: injecting a false positive drops precision to 50% and fails the build.
+
+**Remaining ☐**
+- ☐ Snapshot the `SeoSurface` per fixture so extractor changes show up as reviewable diffs.
+- ☐ Grow the corpus toward 15–20 *real* sites (current fixtures are realistic but hand-authored).
 
 ---
 
 ## 12. Observability & Cost
 
 - Phase-1 delivery cost is ~zero (no LLM on the deterministic path).
-- ☐ Add per-scan timing + issue counts to logs; a minimal metrics endpoint (`/metrics`) exposing scans, findings, rule hit-rates. (Full cost/margin dashboard lands in Phase 2 when LLM + infra enter.)
+- ✅ Per-scan timing + finding counts in structured logs; `GET /metrics` exposes scans, findings, and per-issue-type hit rates. Counters are in-process and reset on restart — persistent metrics and the cost/margin dashboard land in Phase 2 with the datastore.
 
 ---
 
 ## 13. Hosting & CI ☐
 
-- ☐ Dockerfile for `apps/api`; deploy to Fly.io/Railway.
-- ☐ GitHub Actions: `pnpm install`, `pnpm typecheck`, `pnpm test`, golden-set eval — required on PR; deploy on merge to `main`.
+- ✅ Dockerfiles for `apps/api` and `apps/worker` (built in Phase 0; **unvalidated — Docker not available on the dev machine**).
+- ✅ GitHub Actions running lint → typecheck → test → golden-set eval on push/PR.
+- ☐ Actually deploy to Fly.io/Railway; add deploy-on-merge to `main`.
 
 ---
 
@@ -237,22 +258,26 @@ Before scheduled crawling (Phase 2) we must verify the requester owns the proper
 
 ## 15. Work Breakdown (remaining Phase-1)
 
-**Epic A — Complete the issue catalog**
-- ☐ Implement `robotsRule`, `structuredDataRule`, `headingRule`, `socialRule` (+ fixtures).
+**Epic A — Complete the issue catalog** ✅ (mostly)
+- ✅ `robotsRule`, `structuredDataRule`, `headingRule` + golden fixtures.
+- ✅ Reasoner priors/copy for the new issues; head-only fix invariant enforced.
+- ✅ Relative-URL resolution (removed the malformed-canonical false positive).
+- ⊘ `socialRule` deliberately excluded (§6) — noise, not ranking-relevant.
 - ☐ Site-wide `robots.txt`/`sitemap.xml` fetch + `sitemapRobotsRule`.
-- ☐ Reasoner priors/copy for the new issues.
 
-**Epic B — Eval harness**
-- ☐ Golden corpus + per-rule precision/recall runner + CI gate.
+**Epic B — Eval harness** ✅ (delivered in Phase 0)
+- ✅ Golden corpus + per-issue precision/recall runner + CI gate, proven non-vacuous.
 
-**Epic C — Crawl bridge & API hardening**
-- ☐ `POST /scan { url }` server-side crawl; request validation; error shape.
+**Epic C — Crawl bridge & API hardening** ✅
+- ✅ `POST /scan { url }` server-side fetch; zod validation; structured errors; `/metrics`; prioritized output.
+- ☐ Rate limiting + auth before public exposure.
 
-**Epic D — Ownership & registration primitive**
-- ☐ Property + ownership verification (DNS/meta/file).
+**Epic D — Ownership & registration primitive** ☐
+- ☐ Property + ownership verification (DNS TXT / meta tag / well-known file). **The main remaining Phase-1 gap**, and a prerequisite for Phase 2's scheduled crawling.
 
 **Epic E — Ship it**
-- ☐ Dockerfile + CI + deploy; minimal results view (optional).
+- ✅ Dockerfiles + CI.
+- ☐ Deploy; minimal results view (optional).
 
 ---
 

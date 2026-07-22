@@ -1,0 +1,6 @@
+{
+  "description": "Otherwise-healthy page with no H1 element. Isolates missing_h1.",
+  "pages": [
+    { "file": "page.html", "url": "https://example.com/contact", "expected": ["missing_h1"] }
+  ]
+}

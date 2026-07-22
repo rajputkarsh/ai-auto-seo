@@ -1,11 +1,21 @@
 import type { Finding, SeoSurface } from "@awe/core";
 import type { Rule } from "./rule";
 import { canonicalRule } from "./rules/canonical";
+import { headingRule } from "./rules/heading";
 import { metaDescriptionRule } from "./rules/meta";
+import { robotsRule } from "./rules/robots";
+import { structuredDataRule } from "./rules/structured-data";
 import { titleRule } from "./rules/title";
 
 /** The default rule set. Rules are deterministic and cheap — the precision workhorse. */
-export const defaultRules: Rule[] = [titleRule, metaDescriptionRule, canonicalRule];
+export const defaultRules: Rule[] = [
+  titleRule,
+  metaDescriptionRule,
+  canonicalRule,
+  robotsRule,
+  structuredDataRule,
+  headingRule,
+];
 
 export interface EvaluateOptions {
   /** Prior surfaces keyed by URL, to enable regression findings. */

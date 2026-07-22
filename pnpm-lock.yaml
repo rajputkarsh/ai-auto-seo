@@ -65,12 +65,18 @@ importers:
       '@awe/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@awe/crawler':
+        specifier: workspace:*
+        version: link:../../packages/crawler
       '@awe/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
       fastify:
         specifier: ^5.1.0
         version: 5.10.0
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   apps/worker:
     dependencies:

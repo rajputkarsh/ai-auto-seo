@@ -15,7 +15,8 @@ export function extractSurface(html: string, url: string, status = 200): SeoSurf
 
   const title = firstText($("head > title").first().text());
   const description = attrText($, 'meta[name="description"]', "content");
-  const canonical = attrText($, 'link[rel="canonical"]', "href") ?? null;
+  const canonicalRaw = attrText($, 'link[rel="canonical"]', "href");
+  const canonical = canonicalRaw === undefined ? null : resolveUrl(canonicalRaw, url);
   const robots = parseRobots(attrText($, 'meta[name="robots"]', "content"));
   const openGraph = collectMeta($, "property", /^og:/i);
   const twitter = collectMeta($, "name", /^twitter:/i);
@@ -36,6 +37,23 @@ export function extractSurface(html: string, url: string, status = 200): SeoSurf
   if (jsonLd.length) surface.jsonLd = jsonLd;
   if (hreflang.length) surface.hreflang = hreflang;
   return surface;
+}
+
+/**
+ * Resolve a possibly-relative URL against the page URL.
+ *
+ * Relative canonicals (`/pricing`) are valid HTML and are resolved by search
+ * engines, so they must NOT be reported as malformed. Resolving here keeps that
+ * false positive out of the rules entirely. Genuinely unusable values (e.g.
+ * `javascript:`) survive resolution with a non-http protocol and are left for
+ * the rule to flag.
+ */
+function resolveUrl(href: string, pageUrl: string): string {
+  try {
+    return new URL(href, pageUrl).toString();
+  } catch {
+    return href; // unresolvable — hand the raw value to the rule
+  }
 }
 
 function firstText(value: string | undefined): string | undefined {
