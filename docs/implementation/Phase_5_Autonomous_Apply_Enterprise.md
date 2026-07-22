@@ -159,6 +159,7 @@ function allowed(policy: AutonomyPolicy, ctx: { issueType: string; confidence: n
 - **Epic E — SOC 2 Type II** (§7)
 - **Epic F — Staged-autonomy UX (opt-up per issue type)** (§3)
 - **Epic G — Dashboard: autonomy controls** — policy editor (allowlist, confidence thresholds, change budgets, blackout windows), audit-log viewer, and **kill switch** (`Customer_Dashboard.md` §4 P5).
+- **Epic H — Superadmin: autonomy oversight** — view/override org autonomy policies, **global kill switch**, autonomous-action audit review (`Superadmin_Console.md` §9 P5).
 
 ---
 

@@ -204,6 +204,7 @@ Where a per-PR **preview URL** exists (Vercel/Netlify comment on the PR), crawl 
 - **Epic F — Pre-deploy preview detection (premium)** (§9)
 - **Epic G — Merge-rate outcome tracking** (§10)
 - **Epic H — Dashboard: repo affordances** — connect-repo UI, "Open PR" action + PR/merge status, merge-rate view (`Customer_Dashboard.md` §4 P3).
+- **Epic I — Superadmin: repo ops** — view/revoke repo connections, requeue PR/sandbox jobs, per-org premium-preview flag (`Superadmin_Console.md` §9 P3).
 
 ---
 

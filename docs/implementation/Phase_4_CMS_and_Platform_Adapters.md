@@ -155,6 +155,7 @@ export const cmsAdapter: RemediationAdapter = {
 - **Epic E — cmsAdapter + review/approve UX** (§6)
 - **Epic F — Write-back verification** (§8)
 - **Epic G — Dashboard: CMS affordances** — connect-CMS UI and the **draft review + one-click approve** flow, the non-technical owner's primary surface (`Customer_Dashboard.md` §4 P4).
+- **Epic H — Superadmin: CMS ops** — view/revoke CMS connections, per-org platform-adapter flags (`Superadmin_Console.md` §9 P4).
 
 ---
 

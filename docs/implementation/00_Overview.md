@@ -102,3 +102,4 @@ Monorepo (pnpm): `packages/*` (libraries) + `apps/*` (services). See the repo `R
 4. `Phase_4_CMS_and_Platform_Adapters.md`
 5. `Phase_5_Autonomous_Apply_Enterprise.md`
 6. `Customer_Dashboard.md` — **cross-cutting.** The end-user control surface; role-aware (developer + non-technical owner). Optional read-only report in P1, first-class in P2, deepened each phase. Its tasks are threaded into the phase docs above.
+7. `Superadmin_Console.md` — **cross-cutting, internal.** Staff-only cross-tenant back office: manage orgs/users, usage/quotas/cost, plans/billing, abuse/suspension, audited impersonation, system health. Isolated app (`apps/admin`); first-class in P2. Its tasks are threaded into the phase docs above.
