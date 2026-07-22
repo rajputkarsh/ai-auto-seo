@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
 import type { RemediationInstruction, SiteContext } from "@awe/core";
+import { describe, expect, it } from "vitest";
 import { patchAdapter } from "./patch";
 import { recommendationAdapter } from "./recommendation";
 
 const instruction: RemediationInstruction = {
-  finding: { issueType: "missing_canonical", severity: "high", url: "https://ex.com/p", message: "no canonical" },
+  finding: {
+    issueType: "missing_canonical",
+    severity: "high",
+    url: "https://ex.com/p",
+    message: "no canonical",
+  },
   whatIsWrong: "no canonical",
   whyItMatters: "duplicate indexing",
   expectedImpact: "High",
@@ -49,7 +54,10 @@ describe("patchAdapter (Policy 2)", () => {
   });
 
   it("is not applicable when there is no <head> to patch", async () => {
-    const out = await patchAdapter.render(instruction, { url: "https://ex.com/p", html: "<div>no head</div>" });
+    const out = await patchAdapter.render(instruction, {
+      url: "https://ex.com/p",
+      html: "<div>no head</div>",
+    });
     expect(out.meta?.applicable).toBe(false);
   });
 });

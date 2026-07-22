@@ -1,5 +1,5 @@
+import type { JsonLdBlock, RobotsDirective, SeoSurface } from "@awe/core";
 import * as cheerio from "cheerio";
-import type { SeoSurface, JsonLdBlock, RobotsDirective } from "@awe/core";
 
 type CheerioAPI = cheerio.CheerioAPI;
 
@@ -49,14 +49,21 @@ function attrText($: CheerioAPI, selector: string, attr: string): string | undef
 
 function parseRobots(content: string | undefined): RobotsDirective | undefined {
   if (!content) return undefined;
-  const tokens = content.toLowerCase().split(",").map((t) => t.trim());
+  const tokens = content
+    .toLowerCase()
+    .split(",")
+    .map((t) => t.trim());
   return {
     index: !tokens.includes("noindex") && !tokens.includes("none"),
     follow: !tokens.includes("nofollow") && !tokens.includes("none"),
   };
 }
 
-function collectMeta($: CheerioAPI, attr: "name" | "property", pattern: RegExp): Record<string, string> {
+function collectMeta(
+  $: CheerioAPI,
+  attr: "name" | "property",
+  pattern: RegExp,
+): Record<string, string> {
   const out: Record<string, string> = {};
   $(`meta[${attr}]`).each((_, el) => {
     const key = $(el).attr(attr);

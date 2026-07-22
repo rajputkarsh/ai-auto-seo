@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@awe/config": "workspace:*",
+    "@awe/logger": "workspace:*",
     "@awe/pipeline": "workspace:*",
     "bullmq": "^5.34.0"
   }

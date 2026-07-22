@@ -1,0 +1,6 @@
+{
+  "description": "Shopify product page with Liquid-rendered head. Third distinct stack; must produce zero findings.",
+  "pages": [
+    { "file": "page.html", "url": "https://shop.example.com/products/merino-crew", "expected": [] }
+  ]
+}

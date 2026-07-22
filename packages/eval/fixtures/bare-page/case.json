@@ -1,0 +1,10 @@
+{
+  "description": "Minimal page missing title, description and canonical simultaneously.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://example.org/landing",
+      "expected": ["missing_title", "missing_meta_description", "missing_canonical"]
+    }
+  ]
+}

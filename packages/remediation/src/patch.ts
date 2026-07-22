@@ -1,4 +1,9 @@
-import type { RemediationAdapter, RemediationInstruction, RemediationOutput, SiteContext } from "@awe/core";
+import type {
+  RemediationAdapter,
+  RemediationInstruction,
+  RemediationOutput,
+  SiteContext,
+} from "@awe/core";
 import { buildHeadInsertPatch, fileLabelFromUrl } from "./diff";
 
 /**

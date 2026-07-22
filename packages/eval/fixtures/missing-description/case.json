@@ -1,0 +1,10 @@
+{
+  "description": "Healthy page except the meta description was dropped. Isolates missing_meta_description.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://example.com/about",
+      "expected": ["missing_meta_description"]
+    }
+  ]
+}

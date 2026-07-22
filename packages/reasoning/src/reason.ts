@@ -13,11 +13,14 @@ export interface Reasoner {
 }
 
 const WHY: Partial<Record<IssueType, string>> = {
-  missing_title: "Titles are a primary ranking and click-through factor; a missing one suppresses both.",
+  missing_title:
+    "Titles are a primary ranking and click-through factor; a missing one suppresses both.",
   duplicate_title: "Duplicate titles dilute relevance signals and can split rankings across pages.",
-  missing_meta_description: "Without a description, search engines auto-generate a lower-quality snippet, hurting CTR.",
+  missing_meta_description:
+    "Without a description, search engines auto-generate a lower-quality snippet, hurting CTR.",
   missing_canonical: "Without a canonical, duplicate URLs can be indexed, splitting link equity.",
-  malformed_canonical: "A relative or invalid canonical is often ignored, causing duplicate indexing.",
+  malformed_canonical:
+    "A relative or invalid canonical is often ignored, causing duplicate indexing.",
 };
 
 const CONFIDENCE: Partial<Record<IssueType, number>> = {
@@ -33,7 +36,8 @@ export const deterministicReasoner: Reasoner = {
     return {
       finding,
       whatIsWrong: finding.message,
-      whyItMatters: WHY[finding.issueType] ?? "This affects how search engines understand the page.",
+      whyItMatters:
+        WHY[finding.issueType] ?? "This affects how search engines understand the page.",
       expectedImpact: impactLabel(finding.severity),
       confidence: CONFIDENCE[finding.issueType] ?? 0.8,
       targetSurfaceChange: targetChange(finding.issueType, surface),
@@ -60,7 +64,10 @@ function targetChange(issue: IssueType, surface: SeoSurface): Partial<SeoSurface
   }
 }
 
-function canonicalFix(issue: IssueType, surface: SeoSurface): RemediationInstruction["canonicalFix"] {
+function canonicalFix(
+  issue: IssueType,
+  surface: SeoSurface,
+): RemediationInstruction["canonicalFix"] {
   switch (issue) {
     case "missing_canonical":
     case "malformed_canonical":

@@ -1,0 +1,11 @@
+{
+  "description": "Near-miss control for the duplicate-title rule: two similar but distinct titles on the same site must NOT be flagged.",
+  "pages": [
+    {
+      "file": "shirts.html",
+      "url": "https://shop2.example.com/collections/shirts",
+      "expected": []
+    },
+    { "file": "pants.html", "url": "https://shop2.example.com/collections/pants", "expected": [] }
+  ]
+}

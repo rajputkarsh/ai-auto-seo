@@ -1,7 +1,9 @@
-import Fastify from "fastify";
+import { getConfig } from "@awe/config";
 import { runScan } from "@awe/pipeline";
+import Fastify from "fastify";
 
-const app = Fastify({ logger: true });
+const config = getConfig();
+const app = Fastify({ logger: { level: config.LOG_LEVEL } });
 
 app.get("/healthz", async () => ({ ok: true }));
 
@@ -17,13 +19,11 @@ app.post("/scan", async (req, reply) => {
     reply.code(400);
     return { error: "provide { url, html }" };
   }
-  const result = await runScan(body.html, body.url);
-  return result;
+  return runScan(body.html, body.url);
 });
 
-const port = Number(process.env.PORT ?? 3000);
 app
-  .listen({ port, host: "0.0.0.0" })
+  .listen({ port: config.PORT, host: "0.0.0.0" })
   .then((addr) => app.log.info(`AI Website Engineer API listening on ${addr}`))
   .catch((err) => {
     app.log.error(err);

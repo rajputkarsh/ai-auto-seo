@@ -1,0 +1,4 @@
+{
+  "description": "Well-formed Next.js App Router output. Must produce zero findings (false-positive guard).",
+  "pages": [{ "file": "page.html", "url": "https://acme.dev/blog/shipping-fast", "expected": [] }]
+}

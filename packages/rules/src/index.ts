@@ -1,5 +1,5 @@
-export * from "./rule";
 export * from "./engine";
+export * from "./rule";
 export { canonicalRule } from "./rules/canonical";
-export { titleRule } from "./rules/title";
 export { metaDescriptionRule } from "./rules/meta";
+export { titleRule } from "./rules/title";

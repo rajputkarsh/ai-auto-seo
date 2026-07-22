@@ -1,4 +1,8 @@
+import { getConfig } from "@awe/config";
+import { createLogger, reportError } from "@awe/logger";
 import { runScan, type ScanResult } from "@awe/pipeline";
+
+const log = createLogger("worker");
 
 export interface ScanJobData {
   url: string;
@@ -15,18 +19,18 @@ export async function processScanJob(data: ScanJobData): Promise<ScanResult> {
  * repo runs with zero infra. Wire a real crawler into the job payload later.
  */
 async function main(): Promise<void> {
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    console.log("[worker] REDIS_URL not set — idle stub. Set REDIS_URL to enable the 'scan' queue.");
+  const { REDIS_URL } = getConfig();
+  if (!REDIS_URL) {
+    log.info("REDIS_URL not set — idle stub. Set REDIS_URL to enable the 'scan' queue.");
     return;
   }
   const { Worker } = await import("bullmq");
-  const u = new URL(redisUrl);
+  const url = new URL(REDIS_URL);
   const connection = {
-    host: u.hostname,
-    port: u.port ? Number(u.port) : 6379,
-    ...(u.username ? { username: u.username } : {}),
-    ...(u.password ? { password: u.password } : {}),
+    host: url.hostname,
+    port: url.port ? Number(url.port) : 6379,
+    ...(url.username ? { username: url.username } : {}),
+    ...(url.password ? { password: url.password } : {}),
   };
 
   const worker = new Worker<ScanJobData, ScanResult>(
@@ -34,12 +38,12 @@ async function main(): Promise<void> {
     async (job) => processScanJob(job.data),
     { connection },
   );
-  worker.on("completed", (job) => console.log(`[worker] scan job ${job.id} completed`));
-  worker.on("failed", (job, err) => console.error(`[worker] scan job ${job?.id} failed:`, err));
-  console.log("[worker] listening on 'scan' queue");
+  worker.on("completed", (job) => log.info({ jobId: job.id }, "scan job completed"));
+  worker.on("failed", (job, err) => reportError(err, { jobId: job?.id }));
+  log.info("listening on 'scan' queue");
 }
 
 main().catch((err) => {
-  console.error(err);
+  reportError(err);
   process.exit(1);
 });

@@ -1,0 +1,10 @@
+{
+  "description": "Otherwise-healthy page whose canonical tag was removed. Isolates missing_canonical.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://docs.example.com/guide/install",
+      "expected": ["missing_canonical"]
+    }
+  ]
+}

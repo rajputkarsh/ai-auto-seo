@@ -1,4 +1,3 @@
-import type { Finding } from "@awe/core";
 import type { Rule } from "../rule";
 
 export const metaDescriptionRule: Rule = {

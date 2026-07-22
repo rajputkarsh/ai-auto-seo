@@ -1,12 +1,7 @@
-import type { SeoSurface } from "./surface";
 import type { Finding } from "./finding";
+import type { SeoSurface } from "./surface";
 
-export type RemediationPolicy =
-  | "recommendation"
-  | "patch"
-  | "repo_pr"
-  | "cms"
-  | "autonomous";
+export type RemediationPolicy = "recommendation" | "patch" | "repo_pr" | "cms" | "autonomous";
 
 /**
  * An execution-agnostic description of a desired fix.

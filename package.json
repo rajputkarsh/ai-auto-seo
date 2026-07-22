@@ -8,21 +8,38 @@
     "node": ">=20"
   },
   "scripts": {
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm eval",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json",
+    "eval": "tsx packages/eval/src/run.ts",
     "dev:api": "tsx watch apps/api/src/index.ts",
     "dev:worker": "tsx watch apps/worker/src/index.ts",
-    "scan": "tsx scripts/scan.ts"
+    "scan": "tsx scripts/scan.ts",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,json,md}": "biome check --write --no-errors-on-unmatched"
   },
   "devDependencies": {
+    "@awe/config": "workspace:*",
     "@awe/core": "workspace:*",
+    "@awe/eval": "workspace:*",
     "@awe/extractor": "workspace:*",
-    "@awe/rules": "workspace:*",
+    "@awe/logger": "workspace:*",
+    "@awe/pipeline": "workspace:*",
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
-    "@awe/pipeline": "workspace:*",
+    "@awe/rules": "workspace:*",
+    "@biomejs/biome": "^2.0.0",
     "@types/node": "^22.10.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"

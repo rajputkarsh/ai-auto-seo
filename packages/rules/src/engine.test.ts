@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import type { SeoSurface } from "@awe/core";
+import { describe, expect, it } from "vitest";
 import { evaluate } from "./engine";
 
 const healthy = (over: Partial<SeoSurface>): SeoSurface => ({
@@ -28,7 +28,9 @@ describe("rules engine", () => {
   });
 
   it("flags missing title and missing meta description together", () => {
-    const f = evaluate([healthy({ url: "https://ex.com/c", title: undefined, description: undefined })]);
+    const f = evaluate([
+      healthy({ url: "https://ex.com/c", title: undefined, description: undefined }),
+    ]);
     const types = f.map((x) => x.issueType);
     expect(types).toContain("missing_title");
     expect(types).toContain("missing_meta_description");

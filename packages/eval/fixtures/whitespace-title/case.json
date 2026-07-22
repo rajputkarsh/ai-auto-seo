@@ -1,0 +1,6 @@
+{
+  "description": "Title element present but contains only whitespace — must be treated as missing, not as a valid title.",
+  "pages": [
+    { "file": "page.html", "url": "https://example.io/pricing", "expected": ["missing_title"] }
+  ]
+}

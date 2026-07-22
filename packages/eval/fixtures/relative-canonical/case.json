@@ -1,0 +1,10 @@
+{
+  "description": "Canonical present but relative rather than absolute — near-miss case that must be malformed_canonical, NOT missing_canonical.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://store.example.net/collections/sale",
+      "expected": ["malformed_canonical"]
+    }
+  ]
+}

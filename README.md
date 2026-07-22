@@ -2,7 +2,7 @@
 
 The universal AI that understands any website, reasons about technical-SEO issues, and delivers fixes through a **pluggable remediation layer**. Detection reads *rendered output*, so it works on any stack; remediation starts with two universal rails (Recommendation + AI Patch) and grows richer over time — without ever changing the reasoning engine.
 
-See [`docs/`](docs/) for the vision (`AI_Website_Engineer_Vision_v5.md`) and the full implementation plan.
+See [`docs/`](docs/) for the vision (`AI_Website_Engineer_Vision_v5.md`) and [`docs/implementation/`](docs/implementation/) for the phased program.
 
 ## Architecture
 
@@ -26,6 +26,9 @@ The core contract is `RemediationInstruction` (in `@awe/core`): the reasoning en
 | `@awe/remediation` | Execution rails: `recommendation`, `patch` |
 | `@awe/pipeline` | Composition root: `runScan(html, url)` |
 | `@awe/crawler` | Headless-Chromium renderer (+ `fetchCrawl` fallback) |
+| `@awe/eval` | Golden-set eval harness + precision gate |
+| `@awe/config` | Schema-validated environment (zod) |
+| `@awe/logger` | Structured logging (pino) + error-reporting seam |
 | `apps/api` | Fastify service exposing `POST /scan` |
 | `apps/worker` | BullMQ worker (idle unless `REDIS_URL` set) |
 
@@ -33,8 +36,7 @@ The core contract is `RemediationInstruction` (in `@awe/core`): the reasoning en
 
 ```bash
 pnpm install
-pnpm test          # unit + end-to-end pipeline tests
-pnpm typecheck     # tsc across the workspace
+pnpm verify         # lint + typecheck + test + eval (the full gate)
 
 # Try the pipeline on the sample broken page:
 pnpm scan examples/broken-page.html
@@ -47,11 +49,38 @@ pnpm dev:api
 #   -d "{\"url\":\"https://ex.com/p\",\"html\":\"<html><head></head><body></body></html>\"}"
 ```
 
+## Quality gates
+
+| Command | What it enforces |
+| --- | --- |
+| `pnpm lint` / `pnpm lint:fix` | Biome lint + format |
+| `pnpm typecheck` | `tsc` across the workspace |
+| `pnpm test` | Unit + end-to-end pipeline tests |
+| `pnpm eval` | **Golden-set precision gate** — fails below 95% precision per rule |
+| `pnpm verify` | All of the above, in order (mirrors CI) |
+
+The **golden-set eval** (`packages/eval`) is the program's correctness gate. Fixtures live in
+`packages/eval/fixtures/<case>/` as HTML plus a `case.json` labelling the issue types each page
+should produce. Multi-page cases let site-wide rules (e.g. `duplicate_title`) see sibling pages, and
+`healthy-*` cases across different stacks (Next.js, WordPress, Shopify) are what catch false
+positives. **Every new detection rule ships with fixtures.**
+
+CI (`.github/workflows/ci.yml`) runs the same chain on every push and PR.
+
+## Local infrastructure
+
+```bash
+pnpm infra:up      # Postgres + Redis (needed from Phase 2 onward)
+pnpm infra:down
+```
+
 ## Status
 
-MVP scaffold — Phase 1 of the implementation plan: universal detection + reasoning + the Recommendation and Patch rails, all deterministic and running with zero infra. Next: continuous crawl + regression deltas, the LLM-backed reasoner, persistence, and the repo-PR rail.
+- **Phase 0 — Engineering foundations:** complete (CI, lint/format, eval harness + gate, config, logging, containers).
+- **Phase 1 — Universal detection + deterministic remediation:** core pipeline built and verified; remaining scope (full issue catalog, ownership verification, report UI) tracked in `docs/implementation/`.
 
 ## Notes
 
 - The crawler uses `playwright-core`; provision a browser (`npx playwright install chromium`) to use `crawl()`. `fetchCrawl()` needs no browser.
 - The LLM reasoner is not wired yet; the deterministic path needs no `ANTHROPIC_API_KEY`.
+- Fixture HTML and `examples/` are excluded from linting on purpose — they are test data and must stay byte-exact.

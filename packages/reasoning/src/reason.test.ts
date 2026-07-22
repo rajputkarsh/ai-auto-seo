@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import type { Finding, SeoSurface } from "@awe/core";
+import { describe, expect, it } from "vitest";
 import { deterministicReasoner } from "./reason";
 
 const surface: SeoSurface = { url: "https://ex.com/blog/my-post", canonical: null };
@@ -30,7 +30,10 @@ describe("deterministicReasoner", () => {
   });
 
   it("always fills why/impact/confidence for any finding", () => {
-    const ins = deterministicReasoner.reason(finding({ issueType: "duplicate_title", severity: "medium" }), surface);
+    const ins = deterministicReasoner.reason(
+      finding({ issueType: "duplicate_title", severity: "medium" }),
+      surface,
+    );
     expect(ins.whyItMatters.length).toBeGreaterThan(0);
     expect(ins.expectedImpact).toBe("Medium");
     expect(ins.confidence).toBeGreaterThan(0);

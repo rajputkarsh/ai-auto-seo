@@ -1,8 +1,8 @@
 import type { Finding, RemediationInstruction, SeoSurface, SiteContext } from "@awe/core";
 import { extractSurface } from "@awe/extractor";
-import { evaluate } from "@awe/rules";
 import { deterministicReasoner, type Reasoner } from "@awe/reasoning";
-import { recommendationAdapter, patchAdapter } from "@awe/remediation";
+import { patchAdapter, recommendationAdapter } from "@awe/remediation";
+import { evaluate } from "@awe/rules";
 
 export interface ScanResultItem {
   finding: Finding;

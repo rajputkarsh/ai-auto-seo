@@ -1,0 +1,10 @@
+{
+  "description": "Page with no <title> element. Isolates missing_title.",
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://news.example.com/2026/analysis",
+      "expected": ["missing_title"]
+    }
+  ]
+}

@@ -11,7 +11,8 @@ export const recommendationAdapter: RemediationAdapter = {
   },
   async render(instruction: RemediationInstruction): Promise<RemediationOutput> {
     const pct = Math.round(instruction.confidence * 100);
-    const fix = instruction.canonicalFix.html ?? instruction.canonicalFix.diffHint ?? "See guidance.";
+    const fix =
+      instruction.canonicalFix.html ?? instruction.canonicalFix.diffHint ?? "See guidance.";
     const artifact = [
       `Issue: ${instruction.finding.issueType}`,
       `What's wrong: ${instruction.whatIsWrong}`,

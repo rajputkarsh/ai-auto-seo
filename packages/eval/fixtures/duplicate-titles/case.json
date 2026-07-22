@@ -1,0 +1,15 @@
+{
+  "description": "Two pages sharing an identical title. Site-wide rule: BOTH pages must be flagged. Requires multi-page evaluation.",
+  "pages": [
+    {
+      "file": "shirts.html",
+      "url": "https://shop.example.com/collections/shirts",
+      "expected": ["duplicate_title"]
+    },
+    {
+      "file": "pants.html",
+      "url": "https://shop.example.com/collections/pants",
+      "expected": ["duplicate_title"]
+    }
+  ]
+}

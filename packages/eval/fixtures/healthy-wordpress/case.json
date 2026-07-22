@@ -1,0 +1,4 @@
+{
+  "description": "Typical WordPress + Yoast output. Proves universality: a totally different stack must also produce zero findings.",
+  "pages": [{ "file": "page.html", "url": "https://cafe-luna.com/menu/", "expected": [] }]
+}

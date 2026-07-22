@@ -1,8 +1,8 @@
 import type { Finding, SeoSurface } from "@awe/core";
 import type { Rule } from "./rule";
 import { canonicalRule } from "./rules/canonical";
-import { titleRule } from "./rules/title";
 import { metaDescriptionRule } from "./rules/meta";
+import { titleRule } from "./rules/title";
 
 /** The default rule set. Rules are deterministic and cheap — the precision workhorse. */
 export const defaultRules: Rule[] = [titleRule, metaDescriptionRule, canonicalRule];
