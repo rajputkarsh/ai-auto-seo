@@ -1,0 +1,15 @@
+{
+  "description": "robots.txt disallows the whole site for every user-agent, and no sitemap exists. Page markup is healthy — both findings must come from the site-wide layer.",
+  "siteWide": {
+    "robotsTxtPresent": true,
+    "robotsTxtBlocksAll": true,
+    "sitemapPresent": false
+  },
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://blocked.example.com/",
+      "expected": ["robots_txt_blocks_crawling", "sitemap_missing"]
+    }
+  ]
+}

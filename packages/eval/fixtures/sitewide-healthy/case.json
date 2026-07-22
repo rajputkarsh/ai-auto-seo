@@ -1,0 +1,10 @@
+{
+  "description": "TRUE-NEGATIVE control: healthy page on a site with robots.txt and a sitemap. Site-wide rules must stay silent.",
+  "siteWide": {
+    "robotsTxtPresent": true,
+    "robotsTxtBlocksAll": false,
+    "sitemapPresent": true,
+    "sitemapUrlCount": 128
+  },
+  "pages": [{ "file": "page.html", "url": "https://good-site.com/about", "expected": [] }]
+}

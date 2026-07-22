@@ -2,7 +2,11 @@
 
 > **One-liner:** Point the platform at any website, on any stack, and get an accurate, prioritized list of technical-SEO issues — each with what's wrong, why it matters, expected impact, a confidence score, and an exact fix delivered as a copy-paste snippet (Recommendation rail) or a unified diff (Patch rail). No infrastructure, no LLM key, no framework adapters.
 
-**Status:** **Substantially complete.** Pipeline, the issue catalog (9 issue types across 6 rules), deterministic reasoning, both remediation rails, prioritization, CLI, and a hardened API are built and verified — 44 tests green, 16 golden cases / 18 pages at **100% precision & recall**, CI-enforced. Remaining: ownership verification (Epic D), site-wide `robots.txt`/`sitemap.xml` rules, and deploy (Epic E), all marked ☐ below.
+**Status: ✅ COMPLETE** (except deployment, which needs infrastructure credentials).
+
+Delivered: universal detection across **11 issue types / 7 rules**, deterministic reasoning, both remediation rails with **insert *and* replace-in-place** patches, **patch verification**, multi-fix batching, prioritization, site-wide robots.txt/sitemap analysis, **ownership verification**, a hardened API (validation, structured errors, rate limiting, metrics), and a CLI.
+
+**Verified:** 94 tests green · 19 golden cases / 21 pages at **100% precision & recall** · 21 surface snapshots · clean lint + typecheck · CI-enforced.
 
 ---
 
@@ -122,8 +126,9 @@ The reasoner produces the instruction; **adapters never feed back into reasoning
 **Done ✅**
 - ✅ **Relative URLs resolved against the page URL before evaluation.** `resolveUrl()` turns `/pricing` into an absolute URL, so relative canonicals — which are valid HTML that search engines resolve — are no longer reported as malformed. This closed the false positive listed in §14 and changed `malformed_canonical` to mean "unusable after resolution" (e.g. a `javascript:` href).
 
+- ✅ **Site-wide fetches** (`@awe/crawler.fetchSiteWide`): robots.txt parsing (wildcard-group `Disallow: /` detection, `Sitemap:` discovery) and sitemap presence/URL counts, behind an injectable fetcher so it is testable without network.
+
 **Remaining ☐**
-- ☐ Site-wide fetches: `robots.txt`, `sitemap.xml` presence/URL counts (feeds the sitemap/robots rules).
 - ☐ Resolve OG/Twitter URLs (lower value than canonical; no rule consumes them yet).
 
 ---
@@ -140,6 +145,7 @@ The reasoner produces the instruction; **adapters never feed back into reasoning
 | `robotsRule` | `noindex_unexpected` | high |
 | `structuredDataRule` | `invalid_structured_data` | medium |
 | `headingRule` | `missing_h1`, `multiple_h1` | medium / low |
+| `siteWideRule` | `robots_txt_blocks_crawling`, `sitemap_missing` | high / medium |
 
 **Deliberate exclusions** — precision-first calls, not oversights. Each would fire on a large share of healthy pages, and a noisy rule teaches users to ignore findings:
 
@@ -148,11 +154,12 @@ The reasoner produces the instruction; **adapters never feed back into reasoning
 | `missing_structured_data` | JSON-LD is optional and page-type dependent; "no JSON-LD" fires on most healthy pages. Only *broken* JSON-LD is an unambiguous defect. |
 | `socialRule` (missing OG/Twitter) | Affects social sharing, not search ranking; absent on a large share of otherwise-healthy pages. Low severity, high fire rate. |
 
+Two precision guards worth noting: `siteWideRule` stays **completely silent when `siteWide` data is absent** (a page-only scan must not infer site configuration it never fetched), and a *missing* robots.txt is not reported — crawling is allowed by default, so only an absent sitemap is.
+
 **Remaining Phase-1 rules ☐**
 
 | Rule | Issues | Blocked on |
 |---|---|---|
-| ☐ `sitemapRobotsRule` | robots.txt blocks / sitemap missing | site-wide fetch (§5) |
 | ☐ `statusRule` | broken links / bad status | link crawl (arrives with the Phase-2 crawler pool) |
 
 Adding a rule = new `Rule` + golden fixtures + register in `defaultRules`.
@@ -179,9 +186,13 @@ Adding a rule = new `Rule` + golden fixtures + register in `defaultRules`.
 **Policy 2 — AI Patch** (`patchAdapter`)
 - `supports(ctx)` = `ctx.html` present. Inserts the fix before `</head>` (indentation-preserving) and returns a standard unified diff via `buildHeadInsertPatch` (jsdiff). Robust to single-line and multi-line HTML.
 
+**Done ✅**
+- ✅ **Replace-in-place diffs.** `canonicalFix.replaceSelector` (a CSS selector — JSON-serializable, so it survives Phase-2 persistence) tells the rail to swap an existing element instead of inserting. Located via parse5 source offsets through cheerio, so the edit is byte-precise and the diff minimal — no regex over HTML. This unlocked auto-fix for `noindex_unexpected` and `malformed_canonical`, where inserting a second tag would *not* have fixed the problem.
+- ✅ **Patch verification.** Every patch is applied, re-extracted and re-evaluated before it is shown: the target issue must disappear and no new issue type may appear, or the patch is discarded and the item reports `patchUnavailable`. Same principle as the Phase-3 sandbox build gate, at near-zero cost.
+- ✅ **Multi-fix batching.** `ScanResult.combinedPatch` applies every automatable fix in one diff (replacements before insertions), itself verified end-to-end.
+
 **Remaining ☐**
-- ☐ Multi-fix batching: emit one combined diff per page when several head-insertions apply.
-- ☐ **Replace-in-place diffs** — needed to auto-fix `noindex_unexpected`, `malformed_canonical`, and `invalid_structured_data`, which currently ship as guidance only (see §7). This is the single biggest remaining lever on patch coverage.
+- ☐ Auto-fix `invalid_structured_data` — valid JSON-LD cannot be authored deterministically from the page alone; a natural first job for the Phase-2 LLM reasoner.
 
 ---
 
@@ -199,18 +210,28 @@ Adding a rule = new `Rule` + golden fixtures + register in `defaultRules`.
 - ✅ `GET /metrics` with in-process counters (scans, findings, per-issue-type) + per-scan timing in logs.
 - ✅ Findings **prioritized** high → medium → low, tie-broken by issue type for stable output.
 
+- ✅ **Rate limiting** (`@fastify/rate-limit`, `RATE_LIMIT_MAX` req/min/IP) returning a structured 429.
+- ✅ `POST /properties/verification-token` and `POST /properties/verify` (see §10).
+
 **Remaining ☐**
-- ☐ Rate limiting + auth (needed before public exposure).
+- ☐ Authentication (rate limiting is in place; auth arrives with Phase-2 accounts).
 - ☐ Playwright-rendered `POST /scan { url }` for client-rendered pages (Phase-2 crawler pool; `fetchCrawl` covers SSR/static today).
 
 ---
 
 ## 10. Property Registration & Ownership Verification ☐
 
-Before scheduled crawling (Phase 2) we must verify the requester owns the property. Build the primitive now:
-- ☐ `Property` concept (URL/domain) — minimal in P1, persisted in P2.
-- ☐ Ownership proof via one of: DNS TXT record, `<meta>` tag, or a well-known file. Store proof + verified timestamp.
-- ☐ On-demand scans (single URL) require no verification; scheduled/continuous crawls do.
+Before scheduled crawling (Phase 2) we must verify the requester owns the property. **Built ✅** as `@awe/ownership`:
+
+- ✅ **Token derivation** — HMAC of the normalized host under `VERIFICATION_SECRET`. Deterministic rather than random, so a token is re-derivable with no datastore (Phase 1 has none), while the server-side secret still prevents guessing another property's token. `www.` and case are normalized so one token covers the property.
+- ✅ **Three proofs**, tried in order and all reported: `<meta name="awe-site-verification">`, `/.well-known/awe-site-verification.txt`, and a DNS TXT record (split chunks joined per RFC).
+- ✅ **Injectable I/O** (`fetchText`, `resolveTxt`) so verification is fully unit-tested without network or DNS; failures never throw, they surface as a per-method `detail` telling the user what to fix.
+- ✅ API: `POST /properties/verification-token` (token + copy-paste instructions) and `POST /properties/verify`.
+- ✅ Policy: on-demand scans of a single URL need no verification; scheduled/continuous crawling (Phase 2) will require it.
+
+**Remaining ☐**
+- ☐ Persist proof + `verifiedAt` (Phase 2 datastore); token rotation.
+- ⚠️ **`VERIFICATION_SECRET` must be set in any deployed environment** — the default is development-only and would let anyone derive another property's token.
 
 ---
 
@@ -258,26 +279,30 @@ Before scheduled crawling (Phase 2) we must verify the requester owns the proper
 
 ## 15. Work Breakdown (remaining Phase-1)
 
-**Epic A — Complete the issue catalog** ✅ (mostly)
-- ✅ `robotsRule`, `structuredDataRule`, `headingRule` + golden fixtures.
-- ✅ Reasoner priors/copy for the new issues; head-only fix invariant enforced.
+**Epic A — Complete the issue catalog** ✅
+- ✅ `robotsRule`, `structuredDataRule`, `headingRule`, `siteWideRule` + golden fixtures.
+- ✅ Reasoner priors/copy for all 11 issue types; insert-vs-replace invariant enforced.
 - ✅ Relative-URL resolution (removed the malformed-canonical false positive).
-- ⊘ `socialRule` deliberately excluded (§6) — noise, not ranking-relevant.
-- ☐ Site-wide `robots.txt`/`sitemap.xml` fetch + `sitemapRobotsRule`.
+- ✅ Site-wide `robots.txt`/`sitemap.xml` fetch + rules.
+- ⊘ `socialRule` and `missing_structured_data` deliberately excluded (§6) — noise, not ranking-relevant.
+- ☐ `statusRule` — needs the Phase-2 link crawl.
 
 **Epic B — Eval harness** ✅ (delivered in Phase 0)
 - ✅ Golden corpus + per-issue precision/recall runner + CI gate, proven non-vacuous.
+- ✅ Surface snapshots (21) so extractor changes are reviewable diffs.
 
 **Epic C — Crawl bridge & API hardening** ✅
-- ✅ `POST /scan { url }` server-side fetch; zod validation; structured errors; `/metrics`; prioritized output.
-- ☐ Rate limiting + auth before public exposure.
+- ✅ `POST /scan { url }` server-side fetch; zod validation; structured errors; `/metrics`; prioritized output; rate limiting (429).
+- ☐ Authentication (with Phase-2 accounts).
 
-**Epic D — Ownership & registration primitive** ☐
-- ☐ Property + ownership verification (DNS TXT / meta tag / well-known file). **The main remaining Phase-1 gap**, and a prerequisite for Phase 2's scheduled crawling.
+**Epic D — Ownership & registration primitive** ✅
+- ✅ `@awe/ownership`: HMAC token derivation + meta / well-known-file / DNS-TXT proofs, injectable I/O, API endpoints.
+- ☐ Persist proof + `verifiedAt` (Phase 2).
 
 **Epic E — Ship it**
 - ✅ Dockerfiles + CI.
-- ☐ Deploy; minimal results view (optional).
+- ☐ **Deploy** — needs hosting credentials; Dockerfiles remain unvalidated (no Docker on the dev machine).
+- ☐ Minimal results view (optional; the Customer Dashboard doc covers this properly in Phase 2).
 
 ---
 

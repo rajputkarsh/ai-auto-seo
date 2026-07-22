@@ -10,7 +10,9 @@ export type IssueType =
   | "missing_structured_data"
   | "invalid_structured_data"
   | "missing_h1"
-  | "multiple_h1";
+  | "multiple_h1"
+  | "sitemap_missing"
+  | "robots_txt_blocks_crawling";
 
 /**
  * A raw problem detected by a rule. Findings are the output of detection and the

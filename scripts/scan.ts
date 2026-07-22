@@ -40,6 +40,14 @@ for (const item of result.items) {
   if (item.patch) {
     console.log("\nPatch (unified diff):");
     console.log(item.patch.trimEnd());
+  } else if (item.patchUnavailable) {
+    console.log(`\nNo automatic patch: ${item.patchUnavailable}`);
   }
 }
 console.log("─".repeat(64));
+
+if (result.combinedPatch) {
+  console.log("\nCombined patch — applies every automatable fix at once:\n");
+  console.log(result.combinedPatch.trimEnd());
+  console.log("─".repeat(64));
+}

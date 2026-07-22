@@ -20,6 +20,17 @@ export interface SeoSurface {
   jsonLd?: JsonLdBlock[];
   h1Count?: number;
   hreflang?: HreflangEntry[];
+  /** Property-level facts fetched once per site, not per page. */
+  siteWide?: SiteWideSurface;
+}
+
+export interface SiteWideSurface {
+  /** False when robots.txt could not be fetched at all. */
+  robotsTxtPresent: boolean;
+  /** True when robots.txt disallows everything for the default user-agent. */
+  robotsTxtBlocksAll?: boolean;
+  sitemapPresent: boolean;
+  sitemapUrlCount?: number;
 }
 
 export interface RobotsDirective {

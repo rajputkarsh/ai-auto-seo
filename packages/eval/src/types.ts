@@ -15,6 +15,17 @@ export interface GoldenCase {
   name: string;
   description?: string;
   pages: GoldenPage[];
+  /**
+   * Property-level facts (robots.txt / sitemap.xml) that a real scan fetches
+   * separately from page HTML. Declared here so site-wide rules can be graded
+   * by the same precision gate as page rules.
+   */
+  siteWide?: {
+    robotsTxtPresent: boolean;
+    robotsTxtBlocksAll?: boolean;
+    sitemapPresent: boolean;
+    sitemapUrlCount?: number;
+  };
 }
 
 export interface IssueMetrics {

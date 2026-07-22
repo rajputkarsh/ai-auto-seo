@@ -27,12 +27,18 @@ const WHY: Partial<Record<IssueType, string>> = {
     "Malformed JSON-LD is discarded, so the page silently loses any rich-result eligibility it was meant to have.",
   missing_h1: "Without an H1, search engines have no clear statement of the page's primary topic.",
   multiple_h1: "Several H1s dilute the signal of which heading states the page's primary topic.",
+  sitemap_missing:
+    "Without a sitemap, search engines must discover pages by crawling links alone, so new or deep pages are indexed slowly or missed.",
+  robots_txt_blocks_crawling:
+    "robots.txt disallows crawling of the whole site, so search engines cannot fetch any page — this removes the site from search entirely.",
 };
 
 const CONFIDENCE: Partial<Record<IssueType, number>> = {
+  robots_txt_blocks_crawling: 0.99,
   missing_title: 0.99,
   missing_canonical: 0.98,
   noindex_unexpected: 0.97,
+  sitemap_missing: 0.9,
   missing_meta_description: 0.95,
   invalid_structured_data: 0.95,
   missing_h1: 0.93,
@@ -86,10 +92,17 @@ function canonicalFix(
 ): RemediationInstruction["canonicalFix"] {
   switch (issue) {
     case "missing_canonical":
-    case "malformed_canonical":
       return {
         html: `<link rel="canonical" href="${surface.url}" />`,
         diffHint: "Add a canonical link in <head> pointing to the page's absolute URL.",
+      };
+    case "malformed_canonical":
+      // A canonical tag already exists — replace it. Adding a second would
+      // leave two conflicting canonicals, which engines may ignore entirely.
+      return {
+        html: `<link rel="canonical" href="${surface.url}" />`,
+        replaceSelector: 'link[rel="canonical"]',
+        diffHint: "Point the existing canonical at the page's absolute http(s) URL.",
       };
     case "missing_title":
       return {
@@ -102,18 +115,21 @@ function canonicalFix(
         diffHint: "Add a 140–160 character meta description summarizing the page.",
       };
 
-    // The cases below intentionally supply NO `html`. The patch rail inserts
-    // `html` before </head>, which is only correct for a missing head tag. These
-    // fixes are either replacements of an existing tag or live in the body, so
-    // inserting would produce a wrong (or invalid) document. They ship as
-    // guidance until the replace-in-place patch lands.
+    // Replacements: adding a second tag would not fix these, so the existing
+    // element is targeted by selector and swapped out in place.
     case "noindex_unexpected":
-      // Inserting a second robots meta would not help: engines honour the most
-      // restrictive directive, so the existing noindex must be replaced.
+      // Engines honour the most restrictive directive, so a second robots meta
+      // would leave the noindex in force — this must be a replacement.
       return {
+        html: `<meta name="robots" content="index, ${surface.robots?.follow === false ? "nofollow" : "follow"}" />`,
+        replaceSelector: 'meta[name="robots"]',
         diffHint:
-          'Replace the existing robots meta (or X-Robots-Tag header) with <meta name="robots" content="index, follow" />. Adding a second tag will not work — the noindex still applies.',
+          "Replace the existing robots meta so the page is indexable. Also check for an X-Robots-Tag response header, which overrides the meta tag.",
       };
+
+    // Body-level and content fixes: the patch rail inserts into <head>, so these
+    // ship as guidance only. An <h1> in <head> would be invalid, and valid
+    // JSON-LD cannot be authored deterministically from the page alone.
     case "invalid_structured_data":
       return {
         diffHint:
@@ -127,6 +143,19 @@ function canonicalFix(
       return {
         diffHint:
           "Keep one <h1> as the primary heading and demote the others to <h2>/<h3> to reflect the page hierarchy.",
+      };
+
+    // Site-level fixes: these live in robots.txt / sitemap.xml, not page markup,
+    // so no page patch can express them.
+    case "sitemap_missing":
+      return {
+        diffHint:
+          "Publish a sitemap.xml at the site root and reference it from robots.txt with a `Sitemap:` line.",
+      };
+    case "robots_txt_blocks_crawling":
+      return {
+        diffHint:
+          "Remove the site-wide `Disallow: /` from robots.txt (or scope it to the paths that genuinely must stay private).",
       };
     default:
       return {};

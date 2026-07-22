@@ -9,6 +9,14 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  /** Requests per minute per IP. */
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+  /**
+   * Secret used to derive property verification tokens. The default is fine for
+   * local development but MUST be set in any deployed environment — otherwise
+   * anyone can derive another property's token.
+   */
+  VERIFICATION_SECRET: z.string().min(1).default("dev-only-insecure-secret"),
 
   // Phase 2+
   DATABASE_URL: z.string().url().optional(),

@@ -12,6 +12,7 @@ export default defineConfig({
       "@awe/eval": r("./packages/eval/src/index.ts"),
       "@awe/extractor": r("./packages/extractor/src/index.ts"),
       "@awe/logger": r("./packages/logger/src/index.ts"),
+      "@awe/ownership": r("./packages/ownership/src/index.ts"),
       "@awe/pipeline": r("./packages/pipeline/src/index.ts"),
       "@awe/reasoning": r("./packages/reasoning/src/index.ts"),
       "@awe/remediation": r("./packages/remediation/src/index.ts"),

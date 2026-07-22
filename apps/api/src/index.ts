@@ -1,11 +1,34 @@
+import { resolveTxt } from "node:dns/promises";
 import { getConfig } from "@awe/config";
 import { fetchCrawl } from "@awe/crawler";
+import {
+  type VerificationDeps,
+  type VerificationMethod,
+  verificationInstructions,
+  verificationToken,
+  verifyOwnership,
+} from "@awe/ownership";
 import { runScan } from "@awe/pipeline";
+import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { z } from "zod";
 
 const config = getConfig();
 const app = Fastify({ logger: { level: config.LOG_LEVEL } });
+
+await app.register(rateLimit, {
+  max: config.RATE_LIMIT_MAX,
+  timeWindow: "1 minute",
+  // statusCode must be on the returned object, otherwise Fastify's error
+  // handler treats this as an unhandled error and responds 500 instead of 429.
+  errorResponseBuilder: (_req, context) => ({
+    statusCode: 429,
+    error: {
+      code: "rate_limited",
+      message: `Too many requests. Retry in ${context.after}.`,
+    },
+  }),
+});
 
 const scanBody = z.object({
   url: z.string().url(),
@@ -13,10 +36,23 @@ const scanBody = z.object({
   html: z.string().min(1).optional(),
 });
 
+const propertyBody = z.object({ url: z.string().url() });
+
+const verifyBody = z.object({
+  url: z.string().url(),
+  method: z.enum(["meta", "dns", "file"]).optional(),
+});
+
 /** Structured error shape shared by every failure response. */
 function errorResponse(code: string, message: string, details?: unknown) {
   return { error: { code, message, ...(details === undefined ? {} : { details }) } };
 }
+
+/** Real I/O for ownership checks. */
+const verificationDeps: VerificationDeps = {
+  fetchText: async (url) => (await fetchCrawl(url)).html,
+  resolveTxt: (host) => resolveTxt(host),
+};
 
 /**
  * Minimal in-process counters (Phase 1 §12). Resets on restart — persistent
@@ -72,6 +108,42 @@ app.post("/scan", async (req, reply) => {
     "scan complete",
   );
 
+  return result;
+});
+
+/**
+ * POST /properties/verification-token { url }
+ * Returns the token for a property plus copy-paste instructions for each proof.
+ */
+app.post("/properties/verification-token", async (req, reply) => {
+  const parsed = propertyBody.safeParse(req.body);
+  if (!parsed.success) {
+    reply.code(400);
+    return errorResponse("invalid_request", "Request body failed validation.", parsed.error.issues);
+  }
+  const token = verificationToken(parsed.data.url, config.VERIFICATION_SECRET);
+  return {
+    url: parsed.data.url,
+    token,
+    instructions: verificationInstructions(parsed.data.url, token),
+  };
+});
+
+/**
+ * POST /properties/verify { url, method? }
+ * Confirms the caller controls the property. Required before scheduled crawling
+ * (Phase 2); one-off scans of a single URL do not need it.
+ */
+app.post("/properties/verify", async (req, reply) => {
+  const parsed = verifyBody.safeParse(req.body);
+  if (!parsed.success) {
+    reply.code(400);
+    return errorResponse("invalid_request", "Request body failed validation.", parsed.error.issues);
+  }
+  const { url, method } = parsed.data;
+  const token = verificationToken(url, config.VERIFICATION_SECRET);
+  const result = await verifyOwnership(url, token, verificationDeps, method as VerificationMethod);
+  req.log.info({ url, verified: result.verified, method: result.method }, "ownership check");
   return result;
 });
 

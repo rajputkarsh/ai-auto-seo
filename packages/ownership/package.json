@@ -1,5 +1,5 @@
 {
-  "name": "@awe/remediation",
+  "name": "@awe/ownership",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,11 +9,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@awe/core": "workspace:*",
-    "cheerio": "^1.0.0",
-    "diff": "^7.0.0"
-  },
-  "devDependencies": {
-    "@types/diff": "^7.0.0"
+    "@awe/core": "workspace:*"
   }
 }

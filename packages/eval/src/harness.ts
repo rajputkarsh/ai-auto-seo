@@ -30,7 +30,10 @@ export function loadCases(dir: string = FIXTURES_DIR): GoldenCase[] {
 export function detectForCase(caseDir: string, golden: GoldenCase): Map<string, Set<string>> {
   const surfaces: SeoSurface[] = golden.pages.map((page) => {
     const html = readFileSync(join(caseDir, page.file), "utf8");
-    return extractSurface(html, page.url);
+    const surface = extractSurface(html, page.url);
+    // Attach property-level facts a real scan would fetch alongside the page.
+    if (golden.siteWide) surface.siteWide = golden.siteWide;
+    return surface;
   });
 
   const detected = new Map<string, Set<string>>();

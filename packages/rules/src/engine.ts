@@ -4,6 +4,7 @@ import { canonicalRule } from "./rules/canonical";
 import { headingRule } from "./rules/heading";
 import { metaDescriptionRule } from "./rules/meta";
 import { robotsRule } from "./rules/robots";
+import { siteWideRule } from "./rules/sitewide";
 import { structuredDataRule } from "./rules/structured-data";
 import { titleRule } from "./rules/title";
 
@@ -15,6 +16,7 @@ export const defaultRules: Rule[] = [
   robotsRule,
   structuredDataRule,
   headingRule,
+  siteWideRule,
 ];
 
 export interface EvaluateOptions {

@@ -1,0 +1,296 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SeoSurface snapshots > bare-page / page.html 1`] = `
+{
+  "canonical": null,
+  "h1Count": 1,
+  "status": 200,
+  "url": "https://example.org/landing",
+}
+`;
+
+exports[`SeoSurface snapshots > duplicate-titles / pants.html 1`] = `
+{
+  "canonical": "https://shop.example.com/collections/pants",
+  "description": "Browse our trouser collection in chino, denim, and wool.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Shop | Example Store",
+  "url": "https://shop.example.com/collections/pants",
+}
+`;
+
+exports[`SeoSurface snapshots > duplicate-titles / shirts.html 1`] = `
+{
+  "canonical": "https://shop.example.com/collections/shirts",
+  "description": "Browse our shirt collection in oxford, flannel, and linen.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Shop | Example Store",
+  "url": "https://shop.example.com/collections/shirts",
+}
+`;
+
+exports[`SeoSurface snapshots > healthy-nextjs / page.html 1`] = `
+{
+  "canonical": "https://acme.dev/blog/shipping-fast",
+  "description": "How our team ships production changes multiple times a day without breaking things.",
+  "h1Count": 1,
+  "jsonLd": [
+    {
+      "type": "Article",
+      "valid": true,
+    },
+  ],
+  "openGraph": {
+    "og:description": "How our team ships production changes multiple times a day.",
+    "og:title": "Shipping Fast",
+    "og:type": "article",
+  },
+  "robots": {
+    "follow": true,
+    "index": true,
+  },
+  "status": 200,
+  "title": "Shipping Fast | Acme Engineering Blog",
+  "twitter": {
+    "twitter:card": "summary_large_image",
+  },
+  "url": "https://acme.dev/blog/shipping-fast",
+}
+`;
+
+exports[`SeoSurface snapshots > healthy-shopify-product / page.html 1`] = `
+{
+  "canonical": "https://shop.example.com/products/merino-crew",
+  "description": "A midweight merino crew knit in Portugal. Breathable, odour-resistant, built for daily wear.",
+  "h1Count": 1,
+  "jsonLd": [
+    {
+      "type": "Product",
+      "valid": true,
+    },
+  ],
+  "openGraph": {
+    "og:site_name": "Northbound Supply",
+    "og:title": "Merino Crew Sweater",
+    "og:type": "product",
+    "og:url": "https://shop.example.com/products/merino-crew",
+  },
+  "status": 200,
+  "title": "Merino Crew Sweater – Northbound Supply",
+  "twitter": {
+    "twitter:card": "summary_large_image",
+  },
+  "url": "https://shop.example.com/products/merino-crew",
+}
+`;
+
+exports[`SeoSurface snapshots > healthy-wordpress / page.html 1`] = `
+{
+  "canonical": "https://cafe-luna.com/menu/",
+  "description": "Seasonal small plates, house pasta, and natural wine served nightly at Cafe Luna.",
+  "h1Count": 1,
+  "jsonLd": [
+    {
+      "type": "Restaurant",
+      "valid": true,
+    },
+  ],
+  "openGraph": {
+    "og:locale": "en_US",
+    "og:title": "Our Menu - Cafe Luna",
+    "og:type": "article",
+    "og:url": "https://cafe-luna.com/menu/",
+  },
+  "robots": {
+    "follow": true,
+    "index": true,
+  },
+  "status": 200,
+  "title": "Our Menu - Cafe Luna",
+  "url": "https://cafe-luna.com/menu/",
+}
+`;
+
+exports[`SeoSurface snapshots > invalid-canonical / page.html 1`] = `
+{
+  "canonical": "javascript:void(0)",
+  "description": "Current promotions and seasonal offers.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Offers | Example",
+  "url": "https://example.com/offers",
+}
+`;
+
+exports[`SeoSurface snapshots > invalid-jsonld / page.html 1`] = `
+{
+  "canonical": "https://example.com/products/kettle",
+  "description": "A gooseneck pour-over kettle with variable temperature control.",
+  "h1Count": 1,
+  "jsonLd": [
+    {
+      "errors": [
+        "invalid JSON",
+      ],
+      "type": "Unknown",
+      "valid": false,
+    },
+  ],
+  "status": 200,
+  "title": "Pour-Over Kettle | Example",
+  "url": "https://example.com/products/kettle",
+}
+`;
+
+exports[`SeoSurface snapshots > missing-canonical / page.html 1`] = `
+{
+  "canonical": null,
+  "description": "Install the Example CLI on macOS, Linux, and Windows in under a minute.",
+  "h1Count": 1,
+  "robots": {
+    "follow": true,
+    "index": true,
+  },
+  "status": 200,
+  "title": "Installation | Example Docs",
+  "url": "https://docs.example.com/guide/install",
+}
+`;
+
+exports[`SeoSurface snapshots > missing-description / page.html 1`] = `
+{
+  "canonical": "https://example.com/about",
+  "h1Count": 1,
+  "openGraph": {
+    "og:title": "About Us",
+  },
+  "status": 200,
+  "title": "About Us | Example",
+  "url": "https://example.com/about",
+}
+`;
+
+exports[`SeoSurface snapshots > missing-h1 / page.html 1`] = `
+{
+  "canonical": "https://example.com/contact",
+  "description": "Reach our support and sales teams by email or phone.",
+  "h1Count": 0,
+  "status": 200,
+  "title": "Contact Us | Example",
+  "url": "https://example.com/contact",
+}
+`;
+
+exports[`SeoSurface snapshots > missing-title / page.html 1`] = `
+{
+  "canonical": "https://news.example.com/2026/analysis",
+  "description": "An analysis of this year's shifts in regional transit funding.",
+  "h1Count": 1,
+  "status": 200,
+  "url": "https://news.example.com/2026/analysis",
+}
+`;
+
+exports[`SeoSurface snapshots > multiple-h1 / page.html 1`] = `
+{
+  "canonical": "https://example.com/features",
+  "description": "Everything the platform does, section by section.",
+  "h1Count": 3,
+  "status": 200,
+  "title": "Features | Example",
+  "url": "https://example.com/features",
+}
+`;
+
+exports[`SeoSurface snapshots > noindex-page / page.html 1`] = `
+{
+  "canonical": "https://example.com/launch",
+  "description": "Our product launch announcement and press resources.",
+  "h1Count": 1,
+  "robots": {
+    "follow": true,
+    "index": false,
+  },
+  "status": 200,
+  "title": "Launch | Example",
+  "url": "https://example.com/launch",
+}
+`;
+
+exports[`SeoSurface snapshots > relative-canonical / page.html 1`] = `
+{
+  "canonical": "https://store.example.net/collections/sale",
+  "description": "End-of-season markdowns on outerwear, knitwear, and accessories.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Sale | Example Store",
+  "url": "https://store.example.net/collections/sale",
+}
+`;
+
+exports[`SeoSurface snapshots > sitewide-blocked / page.html 1`] = `
+{
+  "canonical": "https://blocked.example.com/",
+  "description": "A site whose robots.txt blocks every crawler.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Home | Blocked Example",
+  "url": "https://blocked.example.com/",
+}
+`;
+
+exports[`SeoSurface snapshots > sitewide-healthy / page.html 1`] = `
+{
+  "canonical": "https://good-site.com/about",
+  "description": "Who we are and what we build.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "About | Good Site",
+  "url": "https://good-site.com/about",
+}
+`;
+
+exports[`SeoSurface snapshots > sitewide-no-sitemap / page.html 1`] = `
+{
+  "canonical": "https://nosite.example.org/docs",
+  "description": "Documentation for a site that publishes no sitemap.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Docs | No Sitemap Example",
+  "url": "https://nosite.example.org/docs",
+}
+`;
+
+exports[`SeoSurface snapshots > unique-titles / pants.html 1`] = `
+{
+  "canonical": "https://shop2.example.com/collections/pants",
+  "description": "Browse our trouser collection in chino, denim, and wool.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Pants | Example Store",
+  "url": "https://shop2.example.com/collections/pants",
+}
+`;
+
+exports[`SeoSurface snapshots > unique-titles / shirts.html 1`] = `
+{
+  "canonical": "https://shop2.example.com/collections/shirts",
+  "description": "Browse our shirt collection in oxford, flannel, and linen.",
+  "h1Count": 1,
+  "status": 200,
+  "title": "Shirts | Example Store",
+  "url": "https://shop2.example.com/collections/shirts",
+}
+`;
+
+exports[`SeoSurface snapshots > whitespace-title / page.html 1`] = `
+{
+  "canonical": "https://example.io/pricing",
+  "description": "Simple per-seat pricing with a free tier for small teams.",
+  "h1Count": 1,
+  "status": 200,
+  "url": "https://example.io/pricing",
+}
+`;

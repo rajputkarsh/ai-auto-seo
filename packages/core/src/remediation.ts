@@ -22,11 +22,22 @@ export interface RemediationInstruction {
   confidence: number;
   /** The desired end-state, expressed as a partial surface change. */
   targetSurfaceChange: Partial<SeoSurface>;
-  /** Concrete fix material, rendered differently by each policy. */
+  /**
+   * Concrete fix material, rendered differently by each policy.
+   *
+   * Must stay JSON-serializable — instructions are persisted from Phase 2 on.
+   */
   canonicalFix: {
-    /** Exact HTML to place in <head>, when applicable. */
+    /** The exact HTML the fixed element should be. */
     html?: string;
-    /** Guidance for the diff / PR rails. */
+    /**
+     * CSS selector of an existing element that `html` should REPLACE.
+     * When absent, `html` is inserted before </head> instead. Replacement is
+     * required whenever adding a second tag would not fix the problem (e.g. a
+     * `noindex` robots meta) or would be invalid.
+     */
+    replaceSelector?: string;
+    /** Guidance for the diff / PR rails, and for fixes no rail can automate. */
     diffHint?: string;
   };
 }

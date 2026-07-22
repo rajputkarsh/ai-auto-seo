@@ -1,0 +1,14 @@
+{
+  "description": "Site with a permissive robots.txt but no sitemap. Isolates sitemap_missing — a missing robots.txt is NOT itself an issue, since crawling is allowed by default.",
+  "siteWide": {
+    "robotsTxtPresent": false,
+    "sitemapPresent": false
+  },
+  "pages": [
+    {
+      "file": "page.html",
+      "url": "https://nosite.example.org/docs",
+      "expected": ["sitemap_missing"]
+    }
+  ]
+}

@@ -32,6 +32,7 @@
     "@awe/eval": "workspace:*",
     "@awe/extractor": "workspace:*",
     "@awe/logger": "workspace:*",
+    "@awe/ownership": "workspace:*",
     "@awe/pipeline": "workspace:*",
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
