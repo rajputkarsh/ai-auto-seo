@@ -7,6 +7,10 @@
 - ✅ **Regression detection** (`@awe/graph`) — `diffSurfaces` + `mergeFindings`; negative-delta-only, before/after evidence, regression-first ranking.
 - ✅ **LLM reasoner + cost governor** (`@awe/reasoning/llm`) — value-based routing (capable model only for generative copy, cheap model only for the ambiguous `noindex` call, rules elsewhere at zero cost), fail-soft fallback, output validation + HTML escaping, spend ceiling with per-call cost telemetry.
 - ✅ **Multi-page site scan** (`@awe/crawler.crawlSite` + `@awe/pipeline.runSiteScan`) — sitemap/robots discovery, robots-rule compliance, concurrency cap, global rate limit, page budget; **all surfaces evaluated together** so cross-page rules can fire. Exposed as `POST /site-scan`.
+- ✅ **Scan history / persistence** (`@awe/persistence`) — `ScanStore` with an in-memory implementation (the default, so the product works before anyone provisions Postgres) and a Prisma/Postgres implementation. Both pass the **same contract test suite**, so swapping them is configuration, not a code path. Prisma schema validates and the client generates; runtime against a real database is unverified.
+- ✅ **Continuous monitoring closed the loop.** `POST /site-scan` now loads the previous surfaces for the property, diffs against them, and saves the new ones — so a second scan reports what *broke* with before/after evidence, without the caller carrying any state. Verified end-to-end: a healthy scan, a deliberate break, then a second scan reporting 2 regressions. `GET /properties/:host/scans` exposes the history.
+
+**Docker:** `Dockerfile` + `docker-compose.yml` provide postgres, redis, api, worker, and a one-shot `verify` service (`pnpm verify:docker`). Authored but **never built or run** — Docker is not installed on the development machine.
 
 **Blocked on infrastructure** (not started): persistence (Postgres), billing (Stripe), the crawler pool at scale, dashboards, and Superadmin console. The LLM path is verified by construction and typecheck but has **not** been exercised against the live API.
 

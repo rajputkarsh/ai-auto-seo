@@ -8,6 +8,7 @@
     "@awe/core": "workspace:*",
     "@awe/crawler": "workspace:*",
     "@awe/ownership": "workspace:*",
+    "@awe/persistence": "workspace:*",
     "@awe/pipeline": "workspace:*",
     "@fastify/rate-limit": "^10.2.0",
     "fastify": "^5.1.0",

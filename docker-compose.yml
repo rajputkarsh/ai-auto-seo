@@ -1,5 +1,14 @@
-# Local infrastructure for Phase 2 (persistence + queue).
-# Services themselves run via `pnpm dev:api` / `pnpm dev:worker`.
+# Full local stack.
+#
+#   docker compose up -d postgres redis   # infrastructure only (pnpm infra:up)
+#   docker compose up --build api worker  # infrastructure + services
+#   docker compose run --rm verify        # lint + typecheck + tests + eval, in-image
+#
+# Values in .env override the defaults below. Empty values in .env fall through
+# to packages/config's schema defaults.
+
+name: ai-website-engineer
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -13,7 +22,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U awe"]
+      test: ["CMD-SHELL", "pg_isready -U awe -d awe"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -30,6 +39,72 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["pnpm", "start:api"]
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # Service-to-service URLs use compose DNS names, not localhost.
+      DATABASE_URL: postgresql://awe:awe@postgres:5432/awe
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
+      VERIFICATION_SECRET: ${VERIFICATION_SECRET:-dev-only-insecure-secret}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # No curl in the slim image — use the Node runtime that is already here.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["pnpm", "start:worker"]
+    environment:
+      DATABASE_URL: postgresql://awe:awe@postgres:5432/awe
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # One-shot: runs the same gate CI runs, inside the image.
+  # `docker compose run --rm verify` — exits non-zero if anything fails.
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    command: ["pnpm", "verify"]
+    environment:
+      NODE_ENV: development
 
 volumes:
   postgres-data:

@@ -67,12 +67,41 @@ positives. **Every new detection rule ships with fixtures.**
 
 CI (`.github/workflows/ci.yml`) runs the same chain on every push and PR.
 
-## Local infrastructure
+## Docker
+
+Copy the env template and fill in what you need — every value may be left empty,
+in which case `packages/config`'s schema defaults apply:
 
 ```bash
-pnpm infra:up      # Postgres + Redis (needed from Phase 2 onward)
-pnpm infra:down
+cp .env.example .env      # or edit the .env already present (gitignored)
 ```
+
+| Command | What it does |
+| --- | --- |
+| `pnpm infra:up` | Postgres + Redis only — use with `pnpm dev:api` on the host |
+| `pnpm stack:up` | Builds and starts the whole stack (postgres, redis, api, worker) |
+| `pnpm stack:logs` | Tails the api and worker logs |
+| `pnpm stack:down` | Stops everything and removes volumes |
+| `pnpm verify:docker` | Runs the full gate (lint → typecheck → test → eval) **inside the image** |
+
+Then:
+
+```bash
+curl localhost:3000/healthz
+curl -s localhost:3000/site-scan -H 'content-type: application/json' \
+  -d '{"url":"https://example.com","maxPages":5}'
+```
+
+Notes on the image (`Dockerfile`): it is Debian `slim`, not Alpine, because
+esbuild (via tsx/vitest) ships glibc binaries and Playwright supports Debian but
+not musl. Dev dependencies are installed deliberately — the services execute
+TypeScript through `tsx` at runtime. `HUSKY=0` keeps the `prepare` hook from
+failing in an image with no git. Services run as a non-root user.
+
+> ⚠️ **Unverified:** the Dockerfile and compose file have not been built or run —
+> Docker is not installed on the machine they were authored on. Structure,
+> build inputs, the healthcheck command, and both start scripts were each
+> validated outside Docker, but expect to debug the first `docker compose build`.
 
 ## Status
 

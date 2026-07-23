@@ -1,0 +1,58 @@
+// Scan history for the AI Website Engineer.
+//
+// Scope note: this covers what the product reads and writes today — properties,
+// scans, and page surfaces. The billing, remediation-outcome, and usage-metering
+// models from docs/implementation/Phase_2_*.md are deliberately NOT declared
+// yet; unused tables are migration debt, so they land with the features that
+// need them.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Property {
+  id        String   @id @default(cuid())
+  /// Registrable host, lowercased and www-stripped (see propertyIdFromUrl).
+  host      String   @unique
+  createdAt DateTime @default(now())
+
+  scans Scan[]
+
+  @@map("properties")
+}
+
+model Scan {
+  id         String   @id @default(cuid())
+  propertyId String
+  scannedAt  DateTime @default(now())
+  pageCount  Int      @default(0)
+  issueCount Int      @default(0)
+
+  property Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  surfaces PageSurface[]
+
+  // History is always read newest-first for one property.
+  @@index([propertyId, scannedAt])
+  @@map("scans")
+}
+
+model PageSurface {
+  id     String @id @default(cuid())
+  scanId String
+  url    String
+  /// Serialized SeoSurface. Stored whole so a rule added later can be
+  /// back-tested against history that predates it.
+  surface Json
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  // latestSurfaces() resolves the newest row per URL for a property.
+  @@index([scanId])
+  @@index([url])
+  @@map("page_surfaces")
+}

@@ -8,6 +8,7 @@ import {
   verificationToken,
   verifyOwnership,
 } from "@awe/ownership";
+import { InMemoryScanStore, propertyIdFromUrl } from "@awe/persistence";
 import { runScan, runSiteScan } from "@awe/pipeline";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
@@ -60,6 +61,16 @@ const verificationDeps: VerificationDeps = {
   fetchText: async (url) => (await fetchCrawl(url)).html,
   resolveTxt: (host) => resolveTxt(host),
 };
+
+/**
+ * Scan history — what turns one-off scans into monitoring.
+ *
+ * In-memory unless DATABASE_URL is set; the Prisma-backed store implements the
+ * same contract, so this is a configuration choice rather than a code path.
+ * (Wiring PrismaScanStore requires a generated client and a reachable database;
+ * see packages/persistence/README notes.)
+ */
+const scanStore = new InMemoryScanStore();
 
 /**
  * Minimal in-process counters (Phase 1 §12). Resets on restart — persistent
@@ -144,7 +155,26 @@ app.post("/site-scan", async (req, reply) => {
     return errorResponse("crawl_failed", `Could not crawl ${url}.`);
   }
 
-  const result = await runSiteScan(crawl.baseUrl, crawl.pages, { siteWide: crawl.siteWide });
+  // Compare against the last time we saw each page, so a second scan reports
+  // what BROKE rather than repeating the same standing issues.
+  const propertyId = propertyIdFromUrl(url);
+  const previous = await scanStore.latestSurfaces(propertyId);
+
+  const result = await runSiteScan(crawl.baseUrl, crawl.pages, {
+    siteWide: crawl.siteWide,
+    previous,
+  });
+
+  await scanStore.saveScan({
+    propertyId,
+    surfaces: result.pages.map((page) => page.surface),
+    issueCount: result.issueCount,
+  });
+
+  const regressionCount = result.pages.reduce(
+    (total, page) => total + page.items.filter((item) => item.finding.isRegression).length,
+    0,
+  );
 
   metrics.scans += 1;
   metrics.findings += result.issueCount;
@@ -161,12 +191,27 @@ app.post("/site-scan", async (req, reply) => {
       discovered: crawl.discovered,
       skipped: crawl.skipped.length,
       findings: result.issueCount,
+      regressions: regressionCount,
       durationMs: Date.now() - startedAt,
     },
     "site scan complete",
   );
 
-  return { ...result, crawl: { discovered: crawl.discovered, skipped: crawl.skipped } };
+  return {
+    ...result,
+    regressionCount,
+    crawl: { discovered: crawl.discovered, skipped: crawl.skipped },
+  };
+});
+
+/**
+ * GET /properties/:host/scans — scan history for a property.
+ * Shows that monitoring is accumulating state, and is the data behind
+ * "what changed since last time".
+ */
+app.get<{ Params: { host: string } }>("/properties/:host/scans", async (req) => {
+  const propertyId = propertyIdFromUrl(req.params.host);
+  return { propertyId, scans: await scanStore.listScans(propertyId) };
 });
 
 /**
