@@ -78,7 +78,9 @@ Monorepo (pnpm): `packages/*` (libraries) + `apps/*` (services). See the repo `R
 
 ## 7. Current Status
 
-**Phase 1 core is built and verified** (see `Phase_1_*.md` §Status): the universal detection → reasoning → Recommendation/Patch pipeline runs end-to-end via CLI and API with 19 passing tests and a clean typecheck, on zero infrastructure. Remaining Phase 1 work (full issue catalog, ownership verification, minimal UI, hosting) and all later phases are specified in their respective documents.
+**Phases 0, 1, and 2 are built and verified** (see each phase's §Status). The universal detect → reason → remediate pipeline, the full Phase-1 issue catalog + ownership verification, and all of Phase 2 — continuous monitoring with regression detection, persistence, the LLM reasoner, billing/entitlements/usage metering, the worker job pipeline, and runnable customer-dashboard + superadmin surfaces — are implemented behind **206 passing tests**, a CI-enforced **100%-precision** golden-set eval, and clean lint + typecheck.
+
+**Not yet exercised against live infrastructure** (deferred to the operator): Docker build/run, a live Postgres, a real Stripe account, a real Anthropic API call, and BullMQ against Redis. Each sits behind a clean seam with an in-memory/fake default and is unit-tested. Phases 3–5 (repo PRs, CMS adapters, autonomous apply) are specified but not started.
 
 ---
 

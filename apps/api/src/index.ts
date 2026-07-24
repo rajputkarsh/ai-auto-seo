@@ -1,4 +1,10 @@
 import { resolveTxt } from "node:dns/promises";
+import {
+  InMemorySubscriptionStore,
+  InMemoryUsageMeter,
+  QuotaGuard,
+  resolveEntitlements,
+} from "@awe/billing";
 import { getConfig } from "@awe/config";
 import { crawlSite, fetchCrawl } from "@awe/crawler";
 import {
@@ -15,11 +21,13 @@ import {
   createAnthropicClient,
   createLlmReasoner,
   deterministicReasoner,
+  type LlmReasonerEvent,
   type Reasoner,
 } from "@awe/reasoning";
 import rateLimit from "@fastify/rate-limit";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { z } from "zod";
+import { AdminAuditLog, registerAdmin } from "./admin";
 
 const config = getConfig();
 const app = Fastify({ logger: { level: config.LOG_LEVEL } });
@@ -90,12 +98,39 @@ const llmClient = config.ANTHROPIC_API_KEY
   : undefined;
 if (llmClient) app.log.info(`llm reasoner enabled (budget ${config.LLM_BUDGET_CENTS}¢/scan)`);
 
-function reasonerForScan(): Reasoner {
-  if (!llmClient) return deterministicReasoner;
-  return createLlmReasoner({
+/**
+ * Build a reasoner for one scan, and a getter for the LLM cost it incurred.
+ *
+ * The cost is captured here (via the reasoner's event hook) so it can be metered
+ * as real usage — the margin story only holds if spend is measured, not assumed.
+ */
+function reasonerForScan(): { reasoner: Reasoner; costCents: () => number } {
+  if (!llmClient) return { reasoner: deterministicReasoner, costCents: () => 0 };
+  let cents = 0;
+  const reasoner = createLlmReasoner({
     client: llmClient,
     governor: new CostGovernor(config.LLM_BUDGET_CENTS),
+    onEvent: (event: LlmReasonerEvent) => {
+      cents += event.costCents ?? 0;
+    },
   });
+  return { reasoner, costCents: () => cents };
+}
+
+/**
+ * Billing state. Org identity is a stand-in until real auth (Phase 3): the
+ * `x-awe-org` header, defaulting to "default". Everything downstream is keyed by
+ * org, so swapping in authenticated identity later touches only this function.
+ */
+const subscriptions = new InMemorySubscriptionStore();
+const usageMeter = new InMemoryUsageMeter();
+const quotaGuard = new QuotaGuard(subscriptions, usageMeter);
+const auditLog = new AdminAuditLog();
+
+function orgOf(req: FastifyRequest): string {
+  const header = req.headers["x-awe-org"];
+  const value = Array.isArray(header) ? header[0] : header;
+  return value?.trim() || "default";
 }
 
 /**
@@ -112,6 +147,34 @@ app.get("/healthz", async () => ({ ok: true }));
 
 app.get("/metrics", async () => metrics);
 
+/** GET /billing/status — the org's plan, entitlements, and usage this period. */
+app.get("/billing/status", async (req) => {
+  const orgId = orgOf(req);
+  const sub = await subscriptions.get(orgId);
+  return {
+    orgId,
+    tier: sub.tier,
+    suspended: sub.suspended,
+    entitlements: resolveEntitlements(sub),
+    usage: await usageMeter.current(orgId),
+  };
+});
+
+/** 402 with the deny reason when a scan is not permitted. */
+async function enforceQuota(
+  req: FastifyRequest,
+): Promise<
+  | { ok: true; orgId: string; maxPagesPerScan: number | null }
+  | { ok: false; body: ReturnType<typeof errorResponse> }
+> {
+  const orgId = orgOf(req);
+  const decision = await quotaGuard.check(orgId);
+  if (!decision.allowed) {
+    return { ok: false, body: errorResponse(decision.reason, decision.message) };
+  }
+  return { ok: true, orgId, maxPagesPerScan: decision.maxPagesPerScan };
+}
+
 /**
  * POST /scan { url, html? }
  * With `html`, runs the universal pipeline on already-rendered markup.
@@ -123,6 +186,12 @@ app.post("/scan", async (req, reply) => {
   if (!parsed.success) {
     reply.code(400);
     return errorResponse("invalid_request", "Request body failed validation.", parsed.error.issues);
+  }
+
+  const gate = await enforceQuota(req);
+  if (!gate.ok) {
+    reply.code(402);
+    return gate.body;
   }
 
   const { url } = parsed.data;
@@ -139,7 +208,15 @@ app.post("/scan", async (req, reply) => {
   }
 
   const startedAt = Date.now();
-  const result = await runScan(html, url, { reasoner: reasonerForScan() });
+  const scan = reasonerForScan();
+  const result = await runScan(html, url, { reasoner: scan.reasoner });
+
+  // Record usage only after the work succeeded — a failed scan is never billed.
+  await usageMeter.record(gate.orgId, {
+    scans: 1,
+    pagesCrawled: 1,
+    llmCostCents: scan.costCents(),
+  });
 
   metrics.scans += 1;
   metrics.findings += result.items.length;
@@ -169,7 +246,19 @@ app.post("/site-scan", async (req, reply) => {
     return errorResponse("invalid_request", "Request body failed validation.", parsed.error.issues);
   }
 
-  const { url, maxPages, concurrency, minDelayMs } = parsed.data;
+  const gate = await enforceQuota(req);
+  if (!gate.ok) {
+    reply.code(402);
+    return gate.body;
+  }
+
+  const { url, concurrency, minDelayMs } = parsed.data;
+  // The plan's page cap is a ceiling on the requested budget — a Free-tier
+  // caller cannot ask for a 500-page crawl.
+  const maxPages =
+    gate.maxPagesPerScan === null
+      ? parsed.data.maxPages
+      : Math.min(parsed.data.maxPages ?? gate.maxPagesPerScan, gate.maxPagesPerScan);
   const startedAt = Date.now();
 
   let crawl: Awaited<ReturnType<typeof crawlSite>>;
@@ -186,16 +275,24 @@ app.post("/site-scan", async (req, reply) => {
   const propertyId = propertyIdFromUrl(url);
   const previous = await scanStore.latestSurfaces(propertyId);
 
+  const scan = reasonerForScan();
   const result = await runSiteScan(crawl.baseUrl, crawl.pages, {
     siteWide: crawl.siteWide,
     previous,
-    reasoner: reasonerForScan(),
+    reasoner: scan.reasoner,
   });
 
   await scanStore.saveScan({
     propertyId,
     surfaces: result.pages.map((page) => page.surface),
     issueCount: result.issueCount,
+  });
+
+  // Meter after success: one scan, one page-crawl per fetched page, LLM cost.
+  await usageMeter.record(gate.orgId, {
+    scans: 1,
+    pagesCrawled: result.pages.length,
+    llmCostCents: scan.costCents(),
   });
 
   const regressionCount = result.pages.reduce(
@@ -275,6 +372,15 @@ app.post("/properties/verify", async (req, reply) => {
   const result = await verifyOwnership(url, token, verificationDeps, method as VerificationMethod);
   req.log.info({ url, verified: result.verified, method: result.method }, "ownership check");
   return result;
+});
+
+// Cross-tenant admin API (fail-closed: only mounts when STAFF_TOKEN is set).
+await registerAdmin(app, {
+  subscriptions,
+  usage: usageMeter,
+  scanStore,
+  audit: auditLog,
+  staffToken: config.STAFF_TOKEN,
 });
 
 app

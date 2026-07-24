@@ -24,6 +24,15 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   /** Per-scan spend ceiling for the LLM reasoner's cost governor, in cents. */
   LLM_BUDGET_CENTS: z.coerce.number().int().nonnegative().default(25),
+  /** Base URL the dashboard/admin apps call for API data. */
+  API_BASE_URL: z.string().url().default("http://localhost:3000"),
+  /** When set, enables the payment rail; absent means the manual (Free-only) provider. */
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  /**
+   * Bearer token the Superadmin console must present. Absent = admin API
+   * disabled entirely (fail closed — no default that could ship to production).
+   */
+  STAFF_TOKEN: z.string().min(1).optional(),
   SENTRY_DSN: z.string().url().optional(),
 });
 

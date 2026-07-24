@@ -2,7 +2,17 @@
 
 > **One-liner:** Turn the one-shot scanner into a continuously-monitored product: crawl any property on a schedule, persist surfaces into a Website Knowledge Graph, detect regressions as surface deltas, swap in an LLM-backed reasoner behind the existing interface, and charge for it — reaching the **first paying customer** with a verified **≥80% gross margin**.
 
-**Status:** **In progress.** Three pieces built and verified without infrastructure:
+**Status: ✅ COMPLETE** (deployment + live-service testing deferred to the operator, by request).
+
+Built and verified: regression detection, LLM reasoner, multi-page crawl, persistence, config-driven wiring, **billing/entitlements/usage metering**, the **worker scan-job pipeline**, a **customer dashboard**, and an **isolated superadmin console** — 206 tests, 100% eval precision, clean lint + typecheck. The whole product was driven end-to-end across three running apps (API + dashboard + admin).
+
+**Not verified** (needs infra the dev machine lacks): Docker build/run, a live Postgres, a real Stripe account, a real Anthropic API call, and BullMQ against a live Redis. Each is wired behind a clean seam and unit-tested against fakes.
+
+---
+
+### Detail
+
+Three pieces built and verified without infrastructure:
 
 - ✅ **Regression detection** (`@awe/graph`) — `diffSurfaces` + `mergeFindings`; negative-delta-only, before/after evidence, regression-first ranking.
 - ✅ **LLM reasoner + cost governor** (`@awe/reasoning/llm`) — value-based routing (capable model only for generative copy, cheap model only for the ambiguous `noindex` call, rules elsewhere at zero cost), fail-soft fallback, output validation + HTML escaping, spend ceiling with per-call cost telemetry.
@@ -15,7 +25,11 @@
 
 **Docker:** `Dockerfile` + `docker-compose.yml` provide postgres, redis, api, worker, and a one-shot `verify` service (`pnpm verify:docker`). Authored but **never built or run** — Docker is not installed on the development machine. The LLM reasoner is wired and its routing/budget logic is unit-tested against a mock client, but has **not** made a real Anthropic API call.
 
-**Blocked on infrastructure** (not started): persistence (Postgres), billing (Stripe), the crawler pool at scale, dashboards, and Superadmin console. The LLM path is verified by construction and typecheck but has **not** been exercised against the live API.
+- ✅ **Billing, entitlements & usage metering** (`@awe/billing`). A tier catalog (free/pro/team/enterprise), per-org subscriptions with overrides, a monthly usage meter, and a `QuotaGuard` — all pure and fully tested. Wired into the API: scans resolve an org (`x-awe-org` header, a Phase-3 auth stand-in), are gated on quota (**402** when suspended or over limit), have their page budget clamped to the plan, and record usage — including LLM cost captured via the reasoner's event hook — only *after* success, so a failed or rejected scan is never billed. `GET /billing/status` exposes it. Stripe is behind a `BillingProvider` seam (manual/Free-only default); the enforcement logic needs no Stripe account.
+- ✅ **Worker scan-job pipeline** (`apps/worker`). `runScanJob` runs the same crawl → scan-vs-history → persist → meter path as the HTTP endpoint, with injected collaborators so it is unit-tested end-to-end (including a scheduled-re-run regression and plan-based page clamping) without Redis. The BullMQ worker is guarded by `REDIS_URL`.
+- ✅ **Customer dashboard** (`apps/web`) and **Superadmin console** (`apps/admin`) — server-rendered surfaces over the real data layer (`@awe/ui` provides an auto-escaping HTML helper, XSS-tested). The admin console is a **separate app on its own port**, holding the staff token that unlocks the API's `/admin/*` namespace (cross-tenant access lives only in the API, fail-closed without `STAFF_TOKEN`). Verified by running all three apps together: the dashboard shows plan/usage and renders findings + regressions; the admin console lists orgs with usage/cost, changes plans, suspends (which then blocks that org's scans), and shows an audit log.
+
+**These are v1 runnable surfaces, not the full Next.js apps** the `Customer_Dashboard`/`Superadmin` docs specify — they exist so the data can be seen and driven today; the richer UI is a later swap behind the same API.
 
 ---
 

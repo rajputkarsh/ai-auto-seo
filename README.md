@@ -26,11 +26,18 @@ The core contract is `RemediationInstruction` (in `@awe/core`): the reasoning en
 | `@awe/remediation` | Execution rails: `recommendation`, `patch` |
 | `@awe/pipeline` | Composition root: `runScan(html, url)` |
 | `@awe/crawler` | Headless-Chromium renderer (+ `fetchCrawl` fallback) |
+| `@awe/graph` | Regression detection via surface deltas (`diffSurfaces`, `mergeFindings`) |
+| `@awe/persistence` | Scan history: in-memory + Prisma/Postgres (same contract) |
+| `@awe/billing` | Tiers, entitlements, usage metering, quota guard |
+| `@awe/ownership` | Property verification (DNS / meta / well-known file) |
 | `@awe/eval` | Golden-set eval harness + precision gate |
 | `@awe/config` | Schema-validated environment (zod) |
 | `@awe/logger` | Structured logging (pino) + error-reporting seam |
-| `apps/api` | Fastify service exposing `POST /scan` |
-| `apps/worker` | BullMQ worker (idle unless `REDIS_URL` set) |
+| `@awe/ui` | Auto-escaping server-rendered HTML helpers |
+| `apps/api` | Fastify API: scan, site-scan, billing, ownership, `/admin/*` |
+| `apps/worker` | BullMQ scan-job pipeline (idle unless `REDIS_URL` set) |
+| `apps/web` | Customer dashboard (server-rendered, calls the API) |
+| `apps/admin` | Superadmin console (isolated, staff-token gated) |
 
 ## Quick start
 

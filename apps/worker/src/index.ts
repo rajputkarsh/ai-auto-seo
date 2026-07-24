@@ -1,49 +1,54 @@
+import { InMemorySubscriptionStore, InMemoryUsageMeter, QuotaGuard } from "@awe/billing";
 import { getConfig } from "@awe/config";
-import { createLogger, reportError } from "@awe/logger";
-import { runScan, type ScanResult } from "@awe/pipeline";
+import { createScanStore } from "@awe/persistence";
+import { runScanJob, type ScanJobData, type ScanJobDeps } from "./job";
 
-const log = createLogger("worker");
+export { runScanJob, type ScanJobData, type ScanJobResult } from "./job";
 
-export interface ScanJobData {
-  url: string;
-  html: string;
-}
-
-/** The unit of work: run the pipeline for one page. */
-export async function processScanJob(data: ScanJobData): Promise<ScanResult> {
-  return runScan(data.html, data.url);
+/** Assemble the job's collaborators from config (shared across all jobs). */
+async function buildDeps(): Promise<ScanJobDeps> {
+  const config = getConfig();
+  const scanStore = await createScanStore({ databaseUrl: config.DATABASE_URL });
+  const subscriptions = new InMemorySubscriptionStore();
+  const usage = new InMemoryUsageMeter();
+  return { scanStore, usage, quota: new QuotaGuard(subscriptions, usage) };
 }
 
 /**
- * Starts a BullMQ worker if REDIS_URL is configured; otherwise stays idle so the
- * repo runs with zero infra. Wire a real crawler into the job payload later.
+ * Start a BullMQ worker if REDIS_URL is configured; otherwise stay idle so the
+ * repo runs with zero infra. Each `scan` job runs the same pipeline as the HTTP
+ * `/site-scan` endpoint (crawl → scan-vs-history → persist → meter).
  */
 async function main(): Promise<void> {
-  const { REDIS_URL } = getConfig();
-  if (!REDIS_URL) {
-    log.info("REDIS_URL not set — idle stub. Set REDIS_URL to enable the 'scan' queue.");
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    console.log(
+      "[worker] REDIS_URL not set — idle stub. Set REDIS_URL to enable the 'scan' queue.",
+    );
     return;
   }
+
+  const deps = await buildDeps();
   const { Worker } = await import("bullmq");
-  const url = new URL(REDIS_URL);
+  const u = new URL(redisUrl);
   const connection = {
-    host: url.hostname,
-    port: url.port ? Number(url.port) : 6379,
-    ...(url.username ? { username: url.username } : {}),
-    ...(url.password ? { password: url.password } : {}),
+    host: u.hostname,
+    port: u.port ? Number(u.port) : 6379,
+    ...(u.username ? { username: u.username } : {}),
+    ...(u.password ? { password: u.password } : {}),
   };
 
-  const worker = new Worker<ScanJobData, ScanResult>(
-    "scan",
-    async (job) => processScanJob(job.data),
-    { connection },
+  const worker = new Worker<ScanJobData>("scan", async (job) => runScanJob(job.data, deps), {
+    connection,
+  });
+  worker.on("completed", (job, result) =>
+    console.log(`[worker] scan ${job.id} ${result?.status}: ${result?.issues} issues`),
   );
-  worker.on("completed", (job) => log.info({ jobId: job.id }, "scan job completed"));
-  worker.on("failed", (job, err) => reportError(err, { jobId: job?.id }));
-  log.info("listening on 'scan' queue");
+  worker.on("failed", (job, err) => console.error(`[worker] scan ${job?.id} failed:`, err));
+  console.log("[worker] listening on 'scan' queue");
 }
 
 main().catch((err) => {
-  reportError(err);
+  console.error(err);
   process.exit(1);
 });

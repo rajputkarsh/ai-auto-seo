@@ -58,6 +58,8 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
       VERIFICATION_SECRET: ${VERIFICATION_SECRET:-dev-only-insecure-secret}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Enables the /admin/* namespace the admin console drives (fail-closed if unset).
+      STAFF_TOKEN: ${STAFF_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,6 +95,43 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["pnpm", "start:web"]
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: "4000"
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Reach the API over the compose network, not localhost.
+      API_BASE_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["pnpm", "start:admin"]
+    ports:
+      - "4100:4100"
+    environment:
+      PORT: "4100"
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      API_BASE_URL: http://api:3000
+      # Must match the api service's STAFF_TOKEN, or /admin/* rejects it.
+      STAFF_TOKEN: ${STAFF_TOKEN:-}
+    depends_on:
+      api:
         condition: service_healthy
 
   # One-shot: runs the same gate CI runs, inside the image.

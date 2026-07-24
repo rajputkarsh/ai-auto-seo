@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@awe/billing": "workspace:*",
     "@awe/config": "workspace:*",
+    "@awe/crawler": "workspace:*",
     "@awe/logger": "workspace:*",
+    "@awe/persistence": "workspace:*",
     "@awe/pipeline": "workspace:*",
+    "@awe/reasoning": "workspace:*",
     "bullmq": "^5.34.0"
   }
 }

@@ -27,12 +27,17 @@
     "stack:down": "docker compose down -v",
     "stack:logs": "docker compose logs -f api worker",
     "verify:docker": "docker compose run --rm verify",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:web": "tsx watch apps/web/src/index.ts",
+    "dev:admin": "tsx watch apps/admin/src/index.ts",
+    "start:web": "tsx apps/web/src/index.ts",
+    "start:admin": "tsx apps/admin/src/index.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,json,md}": "biome check --write --no-errors-on-unmatched"
   },
   "devDependencies": {
+    "@awe/billing": "workspace:*",
     "@awe/config": "workspace:*",
     "@awe/core": "workspace:*",
     "@awe/eval": "workspace:*",
@@ -45,6 +50,7 @@
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
     "@awe/rules": "workspace:*",
+    "@awe/ui": "workspace:*",
     "@biomejs/biome": "^2.0.0",
     "@types/node": "^22.10.2",
     "husky": "^9.1.7",
