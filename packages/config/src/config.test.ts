@@ -26,4 +26,19 @@ describe("loadConfig", () => {
     expect(cfg.DATABASE_URL).toBe("postgresql://localhost:5432/awe");
     expect(cfg.NODE_ENV).toBe("production");
   });
+
+  it("treats an empty string as unset, not as an invalid value", () => {
+    // A blank line in .env (`DATABASE_URL=`) must fall through to the optional
+    // default rather than failing url validation on "".
+    const cfg = loadConfig({ DATABASE_URL: "", REDIS_URL: "", ANTHROPIC_API_KEY: "", PORT: "" });
+    expect(cfg.DATABASE_URL).toBeUndefined();
+    expect(cfg.REDIS_URL).toBeUndefined();
+    expect(cfg.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(cfg.PORT).toBe(3000);
+  });
+
+  it("defaults and coerces the LLM budget", () => {
+    expect(loadConfig({}).LLM_BUDGET_CENTS).toBe(25);
+    expect(loadConfig({ LLM_BUDGET_CENTS: "100" }).LLM_BUDGET_CENTS).toBe(100);
+  });
 });

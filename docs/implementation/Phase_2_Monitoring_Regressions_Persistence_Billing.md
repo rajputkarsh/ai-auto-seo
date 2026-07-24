@@ -10,7 +10,10 @@
 - ✅ **Scan history / persistence** (`@awe/persistence`) — `ScanStore` with an in-memory implementation (the default, so the product works before anyone provisions Postgres) and a Prisma/Postgres implementation. Both pass the **same contract test suite**, so swapping them is configuration, not a code path. Prisma schema validates and the client generates; runtime against a real database is unverified.
 - ✅ **Continuous monitoring closed the loop.** `POST /site-scan` now loads the previous surfaces for the property, diffs against them, and saves the new ones — so a second scan reports what *broke* with before/after evidence, without the caller carrying any state. Verified end-to-end: a healthy scan, a deliberate break, then a second scan reporting 2 regressions. `GET /properties/:host/scans` exposes the history.
 
-**Docker:** `Dockerfile` + `docker-compose.yml` provide postgres, redis, api, worker, and a one-shot `verify` service (`pnpm verify:docker`). Authored but **never built or run** — Docker is not installed on the development machine.
+- ✅ **Config-driven wiring.** The env vars now drive behavior instead of sitting inert: `DATABASE_URL` selects the store (`createScanStore` — Postgres vs in-memory), `ANTHROPIC_API_KEY` enables the LLM reasoner, and `LLM_BUDGET_CENTS` is a per-scan spend ceiling (a fresh `CostGovernor` per scan; fail-soft to deterministic on budget/API errors). Verified by booting the API under four env configurations (minimal, LLM-enabled, `DATABASE_URL`-set → real `PrismaClient` constructed, and empty-string vars).
+- ✅ **Config hardening.** Empty env values (`DATABASE_URL=`) are treated as unset rather than failing url validation — a real trap for anyone loading `.env`.
+
+**Docker:** `Dockerfile` + `docker-compose.yml` provide postgres, redis, api, worker, and a one-shot `verify` service (`pnpm verify:docker`). Authored but **never built or run** — Docker is not installed on the development machine. The LLM reasoner is wired and its routing/budget logic is unit-tested against a mock client, but has **not** made a real Anthropic API call.
 
 **Blocked on infrastructure** (not started): persistence (Postgres), billing (Stripe), the crawler pool at scale, dashboards, and Superadmin console. The LLM path is verified by construction and typecheck but has **not** been exercised against the live API.
 

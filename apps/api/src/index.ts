@@ -8,8 +8,15 @@ import {
   verificationToken,
   verifyOwnership,
 } from "@awe/ownership";
-import { InMemoryScanStore, propertyIdFromUrl } from "@awe/persistence";
+import { createScanStore, propertyIdFromUrl } from "@awe/persistence";
 import { runScan, runSiteScan } from "@awe/pipeline";
+import {
+  CostGovernor,
+  createAnthropicClient,
+  createLlmReasoner,
+  deterministicReasoner,
+  type Reasoner,
+} from "@awe/reasoning";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { z } from "zod";
@@ -63,14 +70,33 @@ const verificationDeps: VerificationDeps = {
 };
 
 /**
- * Scan history — what turns one-off scans into monitoring.
- *
- * In-memory unless DATABASE_URL is set; the Prisma-backed store implements the
- * same contract, so this is a configuration choice rather than a code path.
- * (Wiring PrismaScanStore requires a generated client and a reachable database;
- * see packages/persistence/README notes.)
+ * Scan history — what turns one-off scans into monitoring. In-memory unless
+ * DATABASE_URL is set; both stores satisfy the same contract, so this is a
+ * configuration choice, not a code path.
  */
-const scanStore = new InMemoryScanStore();
+const scanStore = await createScanStore({ databaseUrl: config.DATABASE_URL });
+app.log.info(`scan store: ${config.DATABASE_URL ? "postgres" : "in-memory"}`);
+
+/**
+ * Build the reasoner from config.
+ *
+ * With no API key the deterministic reasoner is used (zero cost, always
+ * available). With a key, the LLM reasoner runs — but a FRESH cost governor is
+ * created per scan, so LLM_BUDGET_CENTS is a per-scan ceiling, and it falls back
+ * to the deterministic instruction on budget exhaustion or any API error.
+ */
+const llmClient = config.ANTHROPIC_API_KEY
+  ? createAnthropicClient(config.ANTHROPIC_API_KEY)
+  : undefined;
+if (llmClient) app.log.info(`llm reasoner enabled (budget ${config.LLM_BUDGET_CENTS}¢/scan)`);
+
+function reasonerForScan(): Reasoner {
+  if (!llmClient) return deterministicReasoner;
+  return createLlmReasoner({
+    client: llmClient,
+    governor: new CostGovernor(config.LLM_BUDGET_CENTS),
+  });
+}
 
 /**
  * Minimal in-process counters (Phase 1 §12). Resets on restart — persistent
@@ -113,7 +139,7 @@ app.post("/scan", async (req, reply) => {
   }
 
   const startedAt = Date.now();
-  const result = await runScan(html, url);
+  const result = await runScan(html, url, { reasoner: reasonerForScan() });
 
   metrics.scans += 1;
   metrics.findings += result.items.length;
@@ -163,6 +189,7 @@ app.post("/site-scan", async (req, reply) => {
   const result = await runSiteScan(crawl.baseUrl, crawl.pages, {
     siteWide: crawl.siteWide,
     previous,
+    reasoner: reasonerForScan(),
   });
 
   await scanStore.saveScan({

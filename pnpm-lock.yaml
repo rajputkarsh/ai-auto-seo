@@ -86,6 +86,9 @@ importers:
       '@awe/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
+      '@awe/reasoning':
+        specifier: workspace:*
+        version: link:../../packages/reasoning
       '@fastify/rate-limit':
         specifier: ^10.2.0
         version: 10.3.0
