@@ -2,7 +2,7 @@
 
 > **One-liner:** Add the **CMS/Platform update** rail: for sites whose content and SEO fields live in a CMS or commerce platform (WordPress, Shopify, and headless CMSs like Contentful/Sanity/Strapi), apply the fix by writing the corrected field through the platform's API — the same `RemediationInstruction`, a non-git execution mechanism. This is how the platform serves the huge, non-developer-native market without breaking the universal model.
 
-**Status:** **Core built & verified** — the CMS/Platform rail works end-to-end against fakes; live OAuth and a real WordPress round-trip are deferred to deployment. 9 new tests (`@awe/platforms`).
+**Status:** **Core built, wired & verified** — the CMS/Platform rail works end-to-end against fakes and is now **reachable through the product**: the API exposes `POST /connections/cms` + `POST /remediate/cms`, the customer dashboard's Integrations page connects a CMS entry and stages a draft, and the applied-fix outcome store has a **Postgres-backed implementation** (`PrismaCmsOutcomeStore`, selected by `DATABASE_URL`). Live OAuth and a real WordPress round-trip are deferred to deployment. 9 new tests (`@awe/platforms`) plus the outcome-store contract test.
 
 Built and tested:
 

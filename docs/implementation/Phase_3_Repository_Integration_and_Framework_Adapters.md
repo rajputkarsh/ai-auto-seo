@@ -2,7 +2,7 @@
 
 > **One-liner:** Add the **Repo PR/MR** rail: connect a GitHub/GitLab repository, map a flagged URL back to the source that renders it, generate a source-accurate fix through a **framework adapter**, validate it in a **sandbox build gate**, and open a merge-ready pull request — driven by the same `RemediationInstruction` produced since Phase 1.
 
-**Status:** **Core built & verified** — the defensible "hard 20%" is done and tested; the infra-bound edges (live GitHub/GitLab auth, real Docker, webhooks, preview URLs) have clean seams and are deferred to deployment.
+**Status:** **Core built, wired & verified** — the defensible "hard 20%" is done and tested, and the repo rail is now **reachable through the product**: the API exposes `POST /connections/repo` + `POST /remediate/repo`, the customer dashboard has an Integrations page that connects a repo and triggers remediation, and the merge-rate outcome store has a **Postgres-backed implementation** (`PrismaPrOutcomeStore`, selected by `DATABASE_URL`) so history survives a restart. The infra-bound edges (live GitHub/GitLab auth, real Docker, webhooks, preview URLs) have clean seams and are deferred to deployment.
 
 Built and tested (18 new tests, all against **real temp-dir fixture repos** and fakes — no mocks of our own code):
 

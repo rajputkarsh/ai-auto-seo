@@ -6,6 +6,8 @@
 
 Built and verified: regression detection, LLM reasoner, multi-page crawl, persistence, config-driven wiring, **billing/entitlements/usage metering**, the **worker scan-job pipeline**, a **customer dashboard**, and an **isolated superadmin console** — 206 tests, 100% eval precision, clean lint + typecheck. The whole product was driven end-to-end across three running apps (API + dashboard + admin).
 
+**Persistence hardened since first completion:** every store is now dual-implemented — in-memory (default) **and** Postgres-backed, selected by `DATABASE_URL` through a factory, each pair proven identical by a shared contract test. This originally covered only scan history; it now also covers **subscriptions, usage metering, and the admin audit trail** (`createBillingStores`, `createAuditStore`). All models live in the one `@awe/persistence` schema (the single migration surface), which validates.
+
 **Not verified** (needs infra the dev machine lacks): Docker build/run, a live Postgres, a real Stripe account, a real Anthropic API call, and BullMQ against a live Redis. Each is wired behind a clean seam and unit-tested against fakes.
 
 ---

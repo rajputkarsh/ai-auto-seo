@@ -11,6 +11,7 @@
   "dependencies": {
     "@awe/adapters": "workspace:*",
     "@awe/core": "workspace:*",
-    "@awe/sandbox": "workspace:*"
+    "@awe/sandbox": "workspace:*",
+    "@prisma/client": "^6.2.0"
   }
 }

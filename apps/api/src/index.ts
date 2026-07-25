@@ -1,10 +1,5 @@
 import { resolveTxt } from "node:dns/promises";
-import {
-  InMemorySubscriptionStore,
-  InMemoryUsageMeter,
-  QuotaGuard,
-  resolveEntitlements,
-} from "@awe/billing";
+import { createBillingStores, QuotaGuard, resolveEntitlements } from "@awe/billing";
 import { getConfig } from "@awe/config";
 import { crawlSite, fetchCrawl } from "@awe/crawler";
 import {
@@ -14,8 +9,9 @@ import {
   verificationToken,
   verifyOwnership,
 } from "@awe/ownership";
-import { createScanStore, propertyIdFromUrl } from "@awe/persistence";
+import { createAuditStore, createScanStore, propertyIdFromUrl } from "@awe/persistence";
 import { runScan, runSiteScan } from "@awe/pipeline";
+import { createCmsOutcomeStore } from "@awe/platforms";
 import {
   CostGovernor,
   createAnthropicClient,
@@ -24,10 +20,11 @@ import {
   type LlmReasonerEvent,
   type Reasoner,
 } from "@awe/reasoning";
+import { createPrOutcomeStore } from "@awe/vcs";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyRequest } from "fastify";
 import { z } from "zod";
-import { AdminAuditLog, registerAdmin } from "./admin";
+import { registerAdmin } from "./admin";
 import { RemediationState, registerRemediation } from "./remediation";
 
 const config = getConfig();
@@ -123,10 +120,11 @@ function reasonerForScan(): { reasoner: Reasoner; costCents: () => number } {
  * `x-awe-org` header, defaulting to "default". Everything downstream is keyed by
  * org, so swapping in authenticated identity later touches only this function.
  */
-const subscriptions = new InMemorySubscriptionStore();
-const usageMeter = new InMemoryUsageMeter();
+const { subscriptions, usage: usageMeter } = await createBillingStores({
+  databaseUrl: config.DATABASE_URL,
+});
 const quotaGuard = new QuotaGuard(subscriptions, usageMeter);
-const auditLog = new AdminAuditLog();
+const auditLog = await createAuditStore({ databaseUrl: config.DATABASE_URL });
 
 function orgOf(req: FastifyRequest): string {
   const header = req.headers["x-awe-org"];
@@ -375,8 +373,13 @@ app.post("/properties/verify", async (req, reply) => {
   return result;
 });
 
-// Connect-and-remediate rails (repo PR / CMS write), reachable per org.
-registerRemediation(app, new RemediationState(), orgOf);
+// Connect-and-remediate rails (repo PR / CMS write), reachable per org. Outcome
+// history (merge-rate / applied-fix) is persisted when DATABASE_URL is set.
+const [prOutcomes, cmsOutcomes] = await Promise.all([
+  createPrOutcomeStore({ databaseUrl: config.DATABASE_URL }),
+  createCmsOutcomeStore({ databaseUrl: config.DATABASE_URL }),
+]);
+registerRemediation(app, new RemediationState({ prOutcomes, cmsOutcomes }), orgOf);
 
 // Cross-tenant admin API (fail-closed: only mounts when STAFF_TOKEN is set).
 await registerAdmin(app, {

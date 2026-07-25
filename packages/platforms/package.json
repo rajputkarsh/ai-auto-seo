@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@awe/core": "workspace:*",
-    "@awe/extractor": "workspace:*"
+    "@awe/extractor": "workspace:*",
+    "@prisma/client": "^6.2.0"
   }
 }

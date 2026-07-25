@@ -1,8 +1,18 @@
 import { detectFramework } from "@awe/adapters";
 import type { RemediationInstruction } from "@awe/core";
 import { runScan } from "@awe/pipeline";
-import { applyCmsRail, InMemoryCmsOutcomeStore, InMemoryPlatform } from "@awe/platforms";
-import { applyRepoRail, InMemoryPrOutcomeStore, InMemoryVcsProvider } from "@awe/vcs";
+import {
+  applyCmsRail,
+  type CmsOutcomeStore,
+  InMemoryCmsOutcomeStore,
+  InMemoryPlatform,
+} from "@awe/platforms";
+import {
+  applyRepoRail,
+  InMemoryPrOutcomeStore,
+  InMemoryVcsProvider,
+  type PrOutcomeStore,
+} from "@awe/vcs";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -24,8 +34,20 @@ export class RemediationState {
   readonly repos = new Map<string, RepoConnection>();
   readonly platforms = new Map<string, InMemoryPlatform>();
   readonly vcs = new InMemoryVcsProvider();
-  readonly prOutcomes = new InMemoryPrOutcomeStore();
-  readonly cmsOutcomes = new InMemoryCmsOutcomeStore();
+  readonly prOutcomes: PrOutcomeStore;
+  readonly cmsOutcomes: CmsOutcomeStore;
+
+  /**
+   * The outcome stores are injectable so a deployment can pass Postgres-backed
+   * ones (merge-rate/applied-fix history must survive a restart); they default
+   * to in-memory so the plugin runs with no database. The VCS provider and CMS
+   * platforms stay in-memory here because a real deployment swaps them for
+   * GitHub/WordPress at the connection layer, not via this state object.
+   */
+  constructor(stores?: { prOutcomes?: PrOutcomeStore; cmsOutcomes?: CmsOutcomeStore }) {
+    this.prOutcomes = stores?.prOutcomes ?? new InMemoryPrOutcomeStore();
+    this.cmsOutcomes = stores?.cmsOutcomes ?? new InMemoryCmsOutcomeStore();
+  }
 }
 
 const repoConnBody = z.object({

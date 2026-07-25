@@ -1,4 +1,4 @@
-import { InMemorySubscriptionStore, InMemoryUsageMeter, QuotaGuard } from "@awe/billing";
+import { createBillingStores, QuotaGuard } from "@awe/billing";
 import { getConfig } from "@awe/config";
 import { createScanStore } from "@awe/persistence";
 import { runScanJob, type ScanJobData, type ScanJobDeps } from "./job";
@@ -9,8 +9,7 @@ export { runScanJob, type ScanJobData, type ScanJobResult } from "./job";
 async function buildDeps(): Promise<ScanJobDeps> {
   const config = getConfig();
   const scanStore = await createScanStore({ databaseUrl: config.DATABASE_URL });
-  const subscriptions = new InMemorySubscriptionStore();
-  const usage = new InMemoryUsageMeter();
+  const { subscriptions, usage } = await createBillingStores({ databaseUrl: config.DATABASE_URL });
   return { scanStore, usage, quota: new QuotaGuard(subscriptions, usage) };
 }
 

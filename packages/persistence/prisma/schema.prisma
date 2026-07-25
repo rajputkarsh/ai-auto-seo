@@ -1,10 +1,12 @@
-// Scan history for the AI Website Engineer.
+// Persistent state for the AI Website Engineer.
 //
-// Scope note: this covers what the product reads and writes today — properties,
-// scans, and page surfaces. The billing, remediation-outcome, and usage-metering
-// models from docs/implementation/Phase_2_*.md are deliberately NOT declared
-// yet; unused tables are migration debt, so they land with the features that
-// need them.
+// This owns the single migration surface for the whole platform. Each package
+// keeps its store *interface* and in-memory default; the Postgres-backed
+// implementation (in that package's `prisma.ts`) targets a structural subset of
+// the client generated here, so no package imports this schema directly.
+//
+// Sections: scan history · billing (subscriptions, usage) · remediation
+// outcomes (PR merge-rate, CMS applied-fix) · admin audit trail.
 
 generator client {
   provider = "prisma-client-js"
@@ -55,4 +57,82 @@ model PageSurface {
   @@index([scanId])
   @@index([url])
   @@map("page_surfaces")
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────
+
+model Subscription {
+  // orgId is the identity; an org without a row is treated as Free (see the
+  // in-memory store), so this table only holds explicit, non-default state.
+  orgId     String   @id
+  tier      String   @default("free")
+  suspended Boolean  @default(false)
+  /// Partial<Entitlements> overrides (comps, negotiated limits); null when none.
+  overrides Json?
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("subscriptions")
+}
+
+model UsagePeriod {
+  id           String @id @default(cuid())
+  orgId        String
+  /// Calendar month `YYYY-MM`; quotas reset at month boundaries (see periodKey).
+  period       String
+  scans        Int    @default(0)
+  pagesCrawled Int    @default(0)
+  llmCostCents Int    @default(0)
+
+  // One row per (org, month); record() upserts into it.
+  @@unique([orgId, period])
+  @@map("usage_periods")
+}
+
+// ─── Remediation outcomes ────────────────────────────────────────────────
+
+model PrOutcome {
+  id         String    @id @default(cuid())
+  orgId      String
+  repo       String
+  prNumber   Int
+  url        String
+  issueType  String
+  /// opened | merged_unedited | merged_edited | dismissed
+  state      String    @default("opened")
+  openedAt   DateTime  @default(now())
+  resolvedAt DateTime?
+
+  // mergeRate() filters by org.
+  @@index([orgId])
+  @@map("pr_outcomes")
+}
+
+model CmsOutcome {
+  id        String   @id @default(cuid())
+  orgId     String
+  url       String
+  issueType String
+  kind      String
+  /// drafted | applied | dismissed
+  state     String   @default("drafted")
+  reviewUrl String?
+  at        DateTime @default(now())
+
+  // appliedFixRate() filters by org.
+  @@index([orgId])
+  @@map("cms_outcomes")
+}
+
+// ─── Admin audit ─────────────────────────────────────────────────────────
+
+model AuditEvent {
+  id     String   @id @default(cuid())
+  at     DateTime @default(now())
+  action String
+  orgId  String
+  detail Json?
+
+  // list() reads newest-first.
+  @@index([at])
+  @@map("audit_events")
 }

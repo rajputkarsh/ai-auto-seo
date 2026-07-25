@@ -5,33 +5,15 @@ import {
   type SubscriptionStore,
   type UsageMeter,
 } from "@awe/billing";
-import type { ScanStore } from "@awe/persistence";
+import type { AuditStore, ScanStore } from "@awe/persistence";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
-export interface AdminAuditEntry {
-  at: string;
-  action: string;
-  orgId: string;
-  detail?: unknown;
-}
-
-/** Append-only, in-memory audit trail (Postgres-backed in a deployment). */
-export class AdminAuditLog {
-  private readonly entries: AdminAuditEntry[] = [];
-  record(action: string, orgId: string, detail?: unknown): void {
-    this.entries.push({ at: new Date().toISOString(), action, orgId, detail });
-  }
-  list(limit = 100): AdminAuditEntry[] {
-    return this.entries.slice(-limit).reverse();
-  }
-}
 
 export interface AdminDeps {
   subscriptions: SubscriptionStore;
   usage: UsageMeter;
   scanStore: ScanStore;
-  audit: AdminAuditLog;
+  audit: AuditStore;
   /** Required. When absent the whole plugin refuses to mount — fail closed. */
   staffToken?: string;
 }
@@ -117,7 +99,7 @@ export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Prom
           tier: parsed.data.tier as Entitlements["tier"],
           suspended: parsed.data.suspended ?? existing.suspended,
         });
-        audit.record("set_plan", orgId, parsed.data);
+        await audit.record("set_plan", orgId, parsed.data);
         return { ok: true };
       });
 
@@ -131,7 +113,7 @@ export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Prom
         const orgId = req.params.orgId;
         const existing = await subscriptions.get(orgId);
         await subscriptions.set({ ...existing, overrides: parsed.data });
-        audit.record("set_override", orgId, parsed.data);
+        await audit.record("set_override", orgId, parsed.data);
         return { ok: true };
       });
 
@@ -142,12 +124,12 @@ export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Prom
           const suspended = req.body?.suspended ?? true;
           const existing = await subscriptions.get(orgId);
           await subscriptions.set({ ...existing, suspended });
-          audit.record(suspended ? "suspend" : "unsuspend", orgId);
+          await audit.record(suspended ? "suspend" : "unsuspend", orgId);
           return { ok: true, suspended };
         },
       );
 
-      admin.get("/audit", async () => ({ entries: audit.list() }));
+      admin.get("/audit", async () => ({ entries: await audit.list() }));
     },
     { prefix: "/admin" },
   );

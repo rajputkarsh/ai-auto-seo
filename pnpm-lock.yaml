@@ -207,7 +207,11 @@ importers:
         specifier: workspace:*
         version: link:../policy
 
-  packages/billing: {}
+  packages/billing:
+    dependencies:
+      '@prisma/client':
+        specifier: ^6.2.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
 
   packages/config:
     dependencies:
@@ -313,6 +317,9 @@ importers:
       '@awe/extractor':
         specifier: workspace:*
         version: link:../extractor
+      '@prisma/client':
+        specifier: ^6.2.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
 
   packages/policy: {}
 
@@ -378,6 +385,9 @@ importers:
       '@awe/sandbox':
         specifier: workspace:*
         version: link:../sandbox
+      '@prisma/client':
+        specifier: ^6.2.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
 
 packages:
 
