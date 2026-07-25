@@ -107,6 +107,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@awe/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@awe/billing':
         specifier: workspace:*
         version: link:../../packages/billing
@@ -128,9 +131,15 @@ importers:
       '@awe/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
+      '@awe/platforms':
+        specifier: workspace:*
+        version: link:../../packages/platforms
       '@awe/reasoning':
         specifier: workspace:*
         version: link:../../packages/reasoning
+      '@awe/vcs':
+        specifier: workspace:*
+        version: link:../../packages/vcs
       '@fastify/rate-limit':
         specifier: ^10.2.0
         version: 10.3.0

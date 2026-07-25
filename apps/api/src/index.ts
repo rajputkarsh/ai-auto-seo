@@ -28,6 +28,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AdminAuditLog, registerAdmin } from "./admin";
+import { RemediationState, registerRemediation } from "./remediation";
 
 const config = getConfig();
 const app = Fastify({ logger: { level: config.LOG_LEVEL } });
@@ -373,6 +374,9 @@ app.post("/properties/verify", async (req, reply) => {
   req.log.info({ url, verified: result.verified, method: result.method }, "ownership check");
   return result;
 });
+
+// Connect-and-remediate rails (repo PR / CMS write), reachable per org.
+registerRemediation(app, new RemediationState(), orgOf);
 
 // Cross-tenant admin API (fail-closed: only mounts when STAFF_TOKEN is set).
 await registerAdmin(app, {
