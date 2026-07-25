@@ -2,7 +2,15 @@
 
 > **One-liner:** Add the **Repo PR/MR** rail: connect a GitHub/GitLab repository, map a flagged URL back to the source that renders it, generate a source-accurate fix through a **framework adapter**, validate it in a **sandbox build gate**, and open a merge-ready pull request — driven by the same `RemediationInstruction` produced since Phase 1.
 
-**Status:** ☐ Not started. Depends on Phase 2 persistence, reasoning, and outcome tracking.
+**Status:** **Core built & verified** — the defensible "hard 20%" is done and tested; the infra-bound edges (live GitHub/GitLab auth, real Docker, webhooks, preview URLs) have clean seams and are deferred to deployment.
+
+Built and tested (18 new tests, all against **real temp-dir fixture repos** and fakes — no mocks of our own code):
+
+- ✅ **`@awe/adapters`** — the `FrameworkAdapter` interface, framework detection, route→source mapping, and `applyToSource`. **Static-HTML** adapter produces genuine unified diffs on real files (reusing the proven remediation diff builders), verified by re-extracting the patched file's surface. **Next.js** adapter (App + Pages Router mapping) inserts a `metadata` export for the clean case and **returns `null`** — falling back to the universal Patch rail — whenever a page already has `metadata`/`generateMetadata` (safe rewrites need AST surgery). *Conservative-but-correct over broad-but-risky.*
+- ✅ **`@awe/sandbox`** — the build gate. Two fail-closed checks: an **injectable build runner** (Docker in prod, stub in tests) and **surface re-verification** (the fixed page must resolve the target issue and introduce no new issue type). Covers all four decline reasons.
+- ✅ **`@awe/vcs`** — a `VcsProvider` seam with an in-memory provider (default/tests) and a wired-but-unexercised `GitHubVcsProvider` (branch → commit files → open PR). The **`openRepoPr` rail** composes adapter → gate → VCS and enforces the central rule: **every decline returns a `fallback` outcome**, so a repo-connected site is never worse off than an unconnected one, and **no build-breaking PR is ever opened** (verified: gate failure opens zero PRs).
+
+**Deferred to deployment** (needs infra/credentials the dev machine lacks): the GitHub App install/OAuth + token exchange, GitLab, `Connection` persistence + webhooks, the ephemeral-Docker build runner, and preview-URL pre-deploy detection. Each attaches behind the interfaces above without touching the tested core.
 
 ---
 

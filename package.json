@@ -37,6 +37,7 @@
     "*.{ts,tsx,js,json,md}": "biome check --write --no-errors-on-unmatched"
   },
   "devDependencies": {
+    "@awe/adapters": "workspace:*",
     "@awe/billing": "workspace:*",
     "@awe/config": "workspace:*",
     "@awe/core": "workspace:*",
@@ -50,7 +51,9 @@
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
     "@awe/rules": "workspace:*",
+    "@awe/sandbox": "workspace:*",
     "@awe/ui": "workspace:*",
+    "@awe/vcs": "workspace:*",
     "@biomejs/biome": "^2.0.0",
     "@types/node": "^22.10.2",
     "husky": "^9.1.7",

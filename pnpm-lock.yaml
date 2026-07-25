@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@awe/adapters':
+        specifier: workspace:*
+        version: link:packages/adapters
       '@awe/billing':
         specifier: workspace:*
         version: link:packages/billing
@@ -47,9 +50,15 @@ importers:
       '@awe/rules':
         specifier: workspace:*
         version: link:packages/rules
+      '@awe/sandbox':
+        specifier: workspace:*
+        version: link:packages/sandbox
       '@awe/ui':
         specifier: workspace:*
         version: link:packages/ui
+      '@awe/vcs':
+        specifier: workspace:*
+        version: link:packages/vcs
       '@biomejs/biome':
         specifier: ^2.0.0
         version: 2.5.5
@@ -164,6 +173,15 @@ importers:
       bullmq:
         specifier: ^5.34.0
         version: 5.80.2
+
+  packages/adapters:
+    dependencies:
+      '@awe/core':
+        specifier: workspace:*
+        version: link:../core
+      '@awe/remediation':
+        specifier: workspace:*
+        version: link:../remediation
 
   packages/billing: {}
 
@@ -297,7 +315,34 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/sandbox:
+    dependencies:
+      '@awe/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      '@awe/core':
+        specifier: workspace:*
+        version: link:../core
+      '@awe/extractor':
+        specifier: workspace:*
+        version: link:../extractor
+      '@awe/rules':
+        specifier: workspace:*
+        version: link:../rules
+
   packages/ui: {}
+
+  packages/vcs:
+    dependencies:
+      '@awe/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      '@awe/core':
+        specifier: workspace:*
+        version: link:../core
+      '@awe/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
 
 packages:
 

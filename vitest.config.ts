@@ -6,6 +6,7 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      "@awe/adapters": r("./packages/adapters/src/index.ts"),
       "@awe/billing": r("./packages/billing/src/index.ts"),
       "@awe/config": r("./packages/config/src/index.ts"),
       "@awe/core": r("./packages/core/src/index.ts"),
@@ -20,6 +21,8 @@ export default defineConfig({
       "@awe/reasoning": r("./packages/reasoning/src/index.ts"),
       "@awe/remediation": r("./packages/remediation/src/index.ts"),
       "@awe/ui": r("./packages/ui/src/index.ts"),
+      "@awe/sandbox": r("./packages/sandbox/src/index.ts"),
+      "@awe/vcs": r("./packages/vcs/src/index.ts"),
       "@awe/rules": r("./packages/rules/src/index.ts"),
     },
   },

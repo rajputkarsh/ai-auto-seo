@@ -1,0 +1,16 @@
+{
+  "name": "@awe/vcs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@awe/adapters": "workspace:*",
+    "@awe/core": "workspace:*",
+    "@awe/sandbox": "workspace:*"
+  }
+}
