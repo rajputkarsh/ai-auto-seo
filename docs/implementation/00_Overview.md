@@ -78,9 +78,16 @@ Monorepo (pnpm): `packages/*` (libraries) + `apps/*` (services). See the repo `R
 
 ## 7. Current Status
 
-**Phases 0, 1, and 2 are built and verified** (see each phase's §Status). The universal detect → reason → remediate pipeline, the full Phase-1 issue catalog + ownership verification, and all of Phase 2 — continuous monitoring with regression detection, persistence, the LLM reasoner, billing/entitlements/usage metering, the worker job pipeline, and runnable customer-dashboard + superadmin surfaces — are implemented behind **206 passing tests**, a CI-enforced **100%-precision** golden-set eval, and clean lint + typecheck.
+**All phases (0–5) have their verifiable core built and tested** (see each phase's §Status) — **265 passing tests**, a CI-enforced **100%-precision** golden-set eval, clean lint + typecheck, across 21 packages + 4 apps.
 
-**Not yet exercised against live infrastructure** (deferred to the operator): Docker build/run, a live Postgres, a real Stripe account, a real Anthropic API call, and BullMQ against Redis. Each sits behind a clean seam with an in-memory/fake default and is unit-tested. Phases 3–5 (repo PRs, CMS adapters, autonomous apply) are specified but not started.
+- **0–2:** universal detect → reason → remediate pipeline; full issue catalog + ownership verification; continuous monitoring with regression detection; persistence; LLM reasoner; billing/entitlements/usage metering; worker job pipeline; customer-dashboard + isolated superadmin.
+- **3:** framework adapters (static-HTML, Next.js) + sandbox build gate + repo-PR rail + merge-rate tracker.
+- **4:** CMS/platform rail (WordPress + in-memory) with draft-by-default + applied-fix tracker.
+- **5:** default-deny autonomy policy engine + reversible-by-construction executor with post-apply monitor and auto-rollback.
+
+Every rail honours the same invariant: **it never degrades below the universal Recommendation/Patch rails, and never applies an unvalidated or irreversible change.**
+
+**Not yet exercised against live infrastructure** (deferred to the operator, each behind a clean seam with an in-memory/fake default): Docker build/run, live Postgres, Stripe, a real Anthropic API call, BullMQ/Redis, GitHub/GitLab App auth + real Docker sandbox, CMS OAuth + a live WordPress round-trip, and the enterprise controls (SSO/SAML, SOC 2, self-hosted runner). The autonomy executor's `apply`/`captureInverse`/`monitor` are rail-agnostic and attach to the concrete P3/P4 revert mechanisms without changing the tested core.
 
 ---
 

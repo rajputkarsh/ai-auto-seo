@@ -2,7 +2,12 @@
 
 > **One-liner:** The top rung of the remediation ladder: for trusted, high-confidence fixes on enterprise accounts, close the loop automatically — **validate → apply → deploy → monitor → auto-rollback** — behind strict policy gates, full auditability, and enterprise trust controls (SSO, SOC 2, self-hosted runner). Same `RemediationInstruction`; the difference is that a human no longer has to click "apply."
 
-**Status:** ☐ Not started. Ships **only after** Phases 3–4 demonstrate consistently high merge/apply rates and correctness in production. This is the most trust-sensitive phase — under-build it deliberately.
+**Status:** **Trust core built & verified** — the two safety-critical pieces (policy engine + reversible executor) are done and exhaustively tested; enterprise SSO/SOC 2/self-hosted-runner are org/infra processes, deferred. Built deliberately small, as the phase demands. 19 new tests.
+
+- ✅ **`@awe/policy`** — `evaluatePolicy()` is **default-deny and fail-closed**: autonomy is granted only when an explicit rule permits AND every guard passes (global kill switch, per-issue allowlist, min-confidence, daily change budget, blackout/freeze windows). Every denial carries an audit reason. `demoteRule()` flips a misbehaving issue to `deny`; `denyAllPolicy()` is the safe Level-1 default. **Every deny path is tested**, including fail-closed on an unparseable blackout window.
+- ✅ **`@awe/autonomy`** — the reversible executor. The method ordering *is* the safety guarantee: **`captureInverse` runs before `apply`** — nothing changes until the undo is already in hand (reversible by construction, not by hope). Flow: capture → apply → monitor → rollback-on-failure → demote + alert. Rolls back on a failed apply, an unhealthy monitor, *or* a monitor that throws (can't confirm health → assume worst). The one state a human must see — **`rollback_failed`** (live change, undo failed) — is alerted loudly, never swallowed. `maybeAutonomouslyApply` gates the whole thing on policy: a denied fix **touches nothing, not even the inverse capture** (tested). Every transition is audited.
+
+**Deferred** (org/infra, not code logic): SSO/SAML + SCIM + RBAC, SOC 2 Type II, the self-hosted-runner packaging, an immutable/exportable audit *store* (the audit *events* are emitted; persistence is the datastore's job), and wiring the executor's `apply`/`captureInverse`/`monitor` to the concrete P3 repo-revert and P4 CMS-restore mechanisms (which themselves need live GitHub/CMS). The executor is rail-agnostic by design, so those attach without changing the tested core.
 
 ---
 

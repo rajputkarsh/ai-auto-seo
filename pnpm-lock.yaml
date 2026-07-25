@@ -11,6 +11,9 @@ importers:
       '@awe/adapters':
         specifier: workspace:*
         version: link:packages/adapters
+      '@awe/autonomy':
+        specifier: workspace:*
+        version: link:packages/autonomy
       '@awe/billing':
         specifier: workspace:*
         version: link:packages/billing
@@ -44,6 +47,9 @@ importers:
       '@awe/platforms':
         specifier: workspace:*
         version: link:packages/platforms
+      '@awe/policy':
+        specifier: workspace:*
+        version: link:packages/policy
       '@awe/reasoning':
         specifier: workspace:*
         version: link:packages/reasoning
@@ -186,6 +192,12 @@ importers:
         specifier: workspace:*
         version: link:../remediation
 
+  packages/autonomy:
+    dependencies:
+      '@awe/policy':
+        specifier: workspace:*
+        version: link:../policy
+
   packages/billing: {}
 
   packages/config:
@@ -292,6 +304,8 @@ importers:
       '@awe/extractor':
         specifier: workspace:*
         version: link:../extractor
+
+  packages/policy: {}
 
   packages/reasoning:
     dependencies:

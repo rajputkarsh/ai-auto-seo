@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@awe/adapters": "workspace:*",
+    "@awe/autonomy": "workspace:*",
     "@awe/billing": "workspace:*",
     "@awe/config": "workspace:*",
     "@awe/core": "workspace:*",
@@ -49,6 +50,7 @@
     "@awe/persistence": "workspace:*",
     "@awe/pipeline": "workspace:*",
     "@awe/platforms": "workspace:*",
+    "@awe/policy": "workspace:*",
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
     "@awe/rules": "workspace:*",

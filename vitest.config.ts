@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@awe/adapters": r("./packages/adapters/src/index.ts"),
+      "@awe/autonomy": r("./packages/autonomy/src/index.ts"),
       "@awe/billing": r("./packages/billing/src/index.ts"),
       "@awe/config": r("./packages/config/src/index.ts"),
       "@awe/core": r("./packages/core/src/index.ts"),
@@ -17,6 +18,7 @@ export default defineConfig({
       "@awe/logger": r("./packages/logger/src/index.ts"),
       "@awe/ownership": r("./packages/ownership/src/index.ts"),
       "@awe/persistence": r("./packages/persistence/src/index.ts"),
+      "@awe/policy": r("./packages/policy/src/index.ts"),
       "@awe/pipeline": r("./packages/pipeline/src/index.ts"),
       "@awe/platforms": r("./packages/platforms/src/index.ts"),
       "@awe/reasoning": r("./packages/reasoning/src/index.ts"),
