@@ -18,6 +18,7 @@ export default defineConfig({
       "@awe/ownership": r("./packages/ownership/src/index.ts"),
       "@awe/persistence": r("./packages/persistence/src/index.ts"),
       "@awe/pipeline": r("./packages/pipeline/src/index.ts"),
+      "@awe/platforms": r("./packages/platforms/src/index.ts"),
       "@awe/reasoning": r("./packages/reasoning/src/index.ts"),
       "@awe/remediation": r("./packages/remediation/src/index.ts"),
       "@awe/ui": r("./packages/ui/src/index.ts"),

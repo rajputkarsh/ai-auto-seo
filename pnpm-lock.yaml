@@ -41,6 +41,9 @@ importers:
       '@awe/pipeline':
         specifier: workspace:*
         version: link:packages/pipeline
+      '@awe/platforms':
+        specifier: workspace:*
+        version: link:packages/platforms
       '@awe/reasoning':
         specifier: workspace:*
         version: link:packages/reasoning
@@ -280,6 +283,15 @@ importers:
       '@awe/rules':
         specifier: workspace:*
         version: link:../rules
+
+  packages/platforms:
+    dependencies:
+      '@awe/core':
+        specifier: workspace:*
+        version: link:../core
+      '@awe/extractor':
+        specifier: workspace:*
+        version: link:../extractor
 
   packages/reasoning:
     dependencies:

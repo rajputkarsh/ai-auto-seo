@@ -2,7 +2,17 @@
 
 > **One-liner:** Add the **CMS/Platform update** rail: for sites whose content and SEO fields live in a CMS or commerce platform (WordPress, Shopify, and headless CMSs like Contentful/Sanity/Strapi), apply the fix by writing the corrected field through the platform's API — the same `RemediationInstruction`, a non-git execution mechanism. This is how the platform serves the huge, non-developer-native market without breaking the universal model.
 
-**Status:** ☐ Not started. Depends on Phase 2 (persistence, reasoning, outcomes). Independent of Phase 3 — both consume the same instruction and can be sequenced by design-partner mix.
+**Status:** **Core built & verified** — the CMS/Platform rail works end-to-end against fakes; live OAuth and a real WordPress round-trip are deferred to deployment. 9 new tests (`@awe/platforms`).
+
+Built and tested:
+
+- ✅ **`PlatformAdapter` interface + field mapping** (`@awe/platforms`) — `resolveEntry`/`writeField`, and `fieldWriteFor(instruction)` mapping issues → CMS-neutral field writes (title / description / canonical / robots). Structured-data and body-level fixes return `null` → fall back to the universal rails, so the CMS rail never reduces coverage.
+- ✅ **`InMemoryPlatform`** — a real store (not a stub): a draft write is held separately from the live entry until `publish()`, giving genuine "staged for review" semantics for local runs and tests.
+- ✅ **`WordPressPlatform`** — over an injectable `fetch`; entry lookup by slug (pages then posts), field→REST-payload mapping (Yoast/RankMath meta conventions), auth header. Request shapes are unit-tested; the live round-trip is verified in deployment.
+- ✅ **`applyCmsRail`** — per-finding orchestration mirroring the repo rail: resolve entry (cached per URL) → **draft write by default** → fallback (`unwritable_field` / `unresolvable_entry` / `write_failed`); one finding's decline never blocks another.
+- ✅ **Write-back verification + applied-fix metric** — a published draft's live field feeds a re-extracted surface that resolves the issue; `CmsOutcomeStore` records drafts and computes **applied-fix rate over *resolved* drafts only** (approved `applied` / rejected `dismissed`; pending drafts excluded) — the Phase-4 health metric.
+
+**Deferred to deployment** (needs credentials/infra the dev machine lacks): platform OAuth/app installs, a live WordPress round-trip, Shopify and a headless CMS adapter (both attach behind the same interface), and true native-draft staging via a WordPress companion plugin (the current adapter is honest about that boundary).
 
 ---
 

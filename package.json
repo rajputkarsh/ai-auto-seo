@@ -48,6 +48,7 @@
     "@awe/ownership": "workspace:*",
     "@awe/persistence": "workspace:*",
     "@awe/pipeline": "workspace:*",
+    "@awe/platforms": "workspace:*",
     "@awe/reasoning": "workspace:*",
     "@awe/remediation": "workspace:*",
     "@awe/rules": "workspace:*",
