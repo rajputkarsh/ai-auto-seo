@@ -34,6 +34,15 @@ const schema = z.object({
    */
   STAFF_TOKEN: z.string().min(1).optional(),
   SENTRY_DSN: z.string().url().optional(),
+  /**
+   * How the API decides who a request belongs to.
+   *  - `apikey`: only a valid `Authorization: Bearer awe_…` key authenticates;
+   *     unauthenticated requests get 401. This is the real, enforced mode.
+   *  - `dev`: additionally trusts the `x-awe-org` header as an `owner` when no
+   *     key is presented, so local development needs zero credentials.
+   * Unset → `apikey` in production, `dev` otherwise (safe by default in prod).
+   */
+  AUTH_MODE: z.enum(["dev", "apikey"]).optional(),
 });
 
 export type AppConfig = z.infer<typeof schema>;

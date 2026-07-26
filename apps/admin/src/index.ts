@@ -1,7 +1,7 @@
 import { getConfig } from "@awe/config";
 import { esc, html, page, raw } from "@awe/ui";
 import formbody from "@fastify/formbody";
-import Fastify from "fastify";
+import Fastify, { type FastifyReply } from "fastify";
 
 /**
  * Superadmin console — the staff-only, cross-tenant back office.
@@ -106,8 +106,113 @@ function actionForm(o: OrgRow): string {
       <input type="hidden" name="orgId" value="${esc(o.orgId)}">
       <input type="hidden" name="suspended" value="${o.suspended ? "false" : "true"}">
       <button>${o.suspended ? "unsuspend" : "suspend"}</button>
-    </form>`;
+    </form>
+    <a href="/keys?org=${encodeURIComponent(o.orgId)}">keys</a>`;
 }
+
+interface KeyRow {
+  id: string;
+  role: string;
+  display: string;
+  label?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+}
+
+/**
+ * Per-org API-key management. Minting returns the plaintext exactly once (the API
+ * never stores or re-shows it), so a freshly created key is surfaced here with a
+ * copy-it-now warning; thereafter only the safe display fragment is shown.
+ */
+/**
+ * Render the keys page for an org. `justCreated` (a freshly minted plaintext) is
+ * passed in memory from the POST handler and shown once — never via the URL,
+ * which would leak the secret into logs and browser history.
+ */
+async function renderKeysPage(reply: FastifyReply, org: string, justCreated?: string) {
+  let keys: KeyRow[];
+  try {
+    ({ keys } = await adminApi<{ keys: KeyRow[] }>(`/orgs/${encodeURIComponent(org)}/keys`));
+  } catch (err) {
+    reply.code(502).type("text/html");
+    return page({ title: "Keys", accent: ACCENT, body: `<p>Admin API: ${esc(String(err))}</p>` });
+  }
+
+  const rows = keys
+    .map(
+      (k) => html`<tr>
+        <td><code>${k.display}</code></td>
+        <td>${k.role}</td>
+        <td>${k.label ?? raw('<span class="muted">—</span>')}</td>
+        <td>${k.revokedAt ? raw('<span class="reg">revoked</span>') : raw("active")}</td>
+        <td>${
+          k.revokedAt
+            ? raw("")
+            : raw(
+                `<form method="post" action="/keys/revoke" style="display:inline"><input type="hidden" name="org" value="${esc(org)}"><input type="hidden" name="keyId" value="${esc(k.id)}"><button>revoke</button></form>`,
+              )
+        }</td>
+      </tr>`,
+    )
+    .join("");
+
+  reply.type("text/html");
+  return page({
+    title: `Keys · ${org}`,
+    accent: ACCENT,
+    body: html`
+      <header><h1>API keys</h1><a href="/">← orgs</a></header>
+      <p class="muted">Org <code>${org}</code></p>
+      ${
+        justCreated
+          ? raw(
+              `<div class="card"><strong>New key (copy it now — it won't be shown again):</strong><pre>${esc(justCreated)}</pre></div>`,
+            )
+          : raw("")
+      }
+      <form method="post" action="/keys/create">
+        <input type="hidden" name="org" value="${org}">
+        <select name="role"><option value="member">member</option><option value="owner">owner</option></select>
+        <input name="label" placeholder="label (optional)" size="20">
+        <button type="submit">Mint key</button>
+      </form>
+      <table>
+        <tr><th>key</th><th>role</th><th>label</th><th>status</th><th></th></tr>
+        ${raw(rows)}
+      </table>
+      ${raw(keys.length === 0 ? '<p class="muted">No keys yet.</p>' : "")}
+    `,
+  });
+}
+
+app.get("/keys", async (req, reply) => {
+  const org = (req.query as { org?: string }).org?.trim();
+  if (!org) return reply.redirect("/");
+  reply.type("text/html");
+  return renderKeysPage(reply, org);
+});
+
+app.post("/keys/create", async (req, reply) => {
+  const { org, role, label } = req.body as { org: string; role?: string; label?: string };
+  const { key } = await adminApi<{ key: string }>(`/orgs/${encodeURIComponent(org)}/keys`, {
+    method: "POST",
+    body: JSON.stringify({
+      role: role ?? "member",
+      ...(label?.trim() ? { label: label.trim() } : {}),
+    }),
+  });
+  // Render straight from the POST so the plaintext is shown once, in the body —
+  // never in the URL (a query param would land in logs and browser history).
+  reply.type("text/html");
+  return renderKeysPage(reply, org, key);
+});
+
+app.post("/keys/revoke", async (req, reply) => {
+  const { org, keyId } = req.body as { org: string; keyId: string };
+  await adminApi(`/keys/${encodeURIComponent(keyId)}`, { method: "DELETE" });
+  return reply.redirect(`/keys?org=${encodeURIComponent(org)}`);
+});
 
 app.post("/plan", async (req, reply) => {
   const { orgId, tier } = req.body as { orgId: string; tier: string };

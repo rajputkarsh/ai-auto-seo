@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@awe/adapters": "workspace:*",
+    "@awe/auth": "workspace:*",
     "@awe/billing": "workspace:*",
     "@awe/config": "workspace:*",
     "@awe/core": "workspace:*",

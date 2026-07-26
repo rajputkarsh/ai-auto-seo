@@ -1,4 +1,5 @@
 import { resolveTxt } from "node:dns/promises";
+import { type AuthMode, createApiKeyStore } from "@awe/auth";
 import { createBillingStores, QuotaGuard, resolveEntitlements } from "@awe/billing";
 import { getConfig } from "@awe/config";
 import { crawlSite, fetchCrawl } from "@awe/crawler";
@@ -25,6 +26,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { registerAdmin } from "./admin";
+import { orgOf, registerAuth } from "./auth";
 import { RemediationState, registerRemediation } from "./remediation";
 
 const config = getConfig();
@@ -116,21 +118,29 @@ function reasonerForScan(): { reasoner: Reasoner; costCents: () => number } {
 }
 
 /**
- * Billing state. Org identity is a stand-in until real auth (Phase 3): the
- * `x-awe-org` header, defaulting to "default". Everything downstream is keyed by
- * org, so swapping in authenticated identity later touches only this function.
+ * Authentication. Every non-public route resolves to an `Identity` via a hashed
+ * API key (`Authorization: Bearer awe_…`); everything downstream is keyed by the
+ * resolved `orgId`. `apikey` mode enforces this strictly; `dev` mode also accepts
+ * the `x-awe-org` header so local development needs no credentials. Default:
+ * `apikey` in production, `dev` otherwise — safe by default where it matters.
  */
+const apiKeyStore = await createApiKeyStore({ databaseUrl: config.DATABASE_URL });
+const authMode: AuthMode =
+  config.AUTH_MODE ?? (config.NODE_ENV === "production" ? "apikey" : "dev");
+registerAuth(app, { store: apiKeyStore, mode: authMode });
+app.log.info(`auth mode: ${authMode}`);
+if (authMode === "dev") {
+  app.log.warn(
+    "AUTH_MODE=dev — the x-awe-org header is trusted without a key. Do NOT run this in production.",
+  );
+}
+
+/** Billing state, keyed by the authenticated org. */
 const { subscriptions, usage: usageMeter } = await createBillingStores({
   databaseUrl: config.DATABASE_URL,
 });
 const quotaGuard = new QuotaGuard(subscriptions, usageMeter);
 const auditLog = await createAuditStore({ databaseUrl: config.DATABASE_URL });
-
-function orgOf(req: FastifyRequest): string {
-  const header = req.headers["x-awe-org"];
-  const value = Array.isArray(header) ? header[0] : header;
-  return value?.trim() || "default";
-}
 
 /**
  * Minimal in-process counters (Phase 1 §12). Resets on restart — persistent
@@ -387,6 +397,7 @@ await registerAdmin(app, {
   usage: usageMeter,
   scanStore,
   audit: auditLog,
+  apiKeys: apiKeyStore,
   staffToken: config.STAFF_TOKEN,
 });
 

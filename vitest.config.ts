@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@awe/adapters": r("./packages/adapters/src/index.ts"),
+      "@awe/auth": r("./packages/auth/src/index.ts"),
       "@awe/autonomy": r("./packages/autonomy/src/index.ts"),
       "@awe/billing": r("./packages/billing/src/index.ts"),
       "@awe/config": r("./packages/config/src/index.ts"),

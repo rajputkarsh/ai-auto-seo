@@ -1,3 +1,4 @@
+import type { ApiKeyStore, Role } from "@awe/auth";
 import {
   type Entitlements,
   isTier,
@@ -14,6 +15,7 @@ export interface AdminDeps {
   usage: UsageMeter;
   scanStore: ScanStore;
   audit: AuditStore;
+  apiKeys: ApiKeyStore;
   /** Required. When absent the whole plugin refuses to mount — fail closed. */
   staffToken?: string;
 }
@@ -27,6 +29,10 @@ const overrideBody = z.object({
   maxProperties: z.coerce.number().int().nonnegative().nullable().optional(),
   maxPagesPerScan: z.coerce.number().int().nonnegative().nullable().optional(),
 });
+const keyBody = z.object({
+  role: z.enum(["owner", "member"]).default("member"),
+  label: z.string().min(1).max(120).optional(),
+});
 
 /**
  * The cross-tenant admin surface, isolated as a plugin under `/admin/*`.
@@ -39,7 +45,7 @@ const overrideBody = z.object({
  *     written to the audit log with the actor's intent.
  */
 export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Promise<void> {
-  const { subscriptions, usage, scanStore, audit, staffToken } = deps;
+  const { subscriptions, usage, scanStore, audit, apiKeys, staffToken } = deps;
 
   if (!staffToken) {
     app.log.warn("STAFF_TOKEN not set — admin API disabled");
@@ -128,6 +134,42 @@ export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Prom
           return { ok: true, suspended };
         },
       );
+
+      // ── API-key management ──────────────────────────────────────────────
+      // Superadmin mints keys for an org; the plaintext is returned exactly once
+      // (never stored, never listable) so it must be copied at creation time.
+      admin.post<{ Params: { orgId: string } }>("/orgs/:orgId/keys", async (req, reply) => {
+        const parsed = keyBody.safeParse(req.body ?? {});
+        if (!parsed.success) {
+          return reply
+            .code(400)
+            .send({ error: { code: "invalid_request", message: "bad key request" } });
+        }
+        const orgId = req.params.orgId;
+        const { record, plaintext } = await apiKeys.create({
+          orgId,
+          role: parsed.data.role as Role,
+          ...(parsed.data.label ? { label: parsed.data.label } : {}),
+        });
+        await audit.record("create_key", orgId, { keyId: record.id, role: record.role });
+        // `key` is shown once; everything else is safe to display again later.
+        return reply.code(201).send({ key: plaintext, record });
+      });
+
+      admin.get<{ Params: { orgId: string } }>("/orgs/:orgId/keys", async (req) => ({
+        keys: await apiKeys.list(req.params.orgId),
+      }));
+
+      admin.delete<{ Params: { keyId: string } }>("/keys/:keyId", async (req, reply) => {
+        const revoked = await apiKeys.revoke(req.params.keyId);
+        if (!revoked) {
+          return reply
+            .code(404)
+            .send({ error: { code: "not_found", message: "no active key with that id" } });
+        }
+        await audit.record("revoke_key", "-", { keyId: req.params.keyId });
+        return { revoked: true };
+      });
 
       admin.get("/audit", async () => ({ entries: await audit.list() }));
     },

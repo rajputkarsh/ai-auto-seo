@@ -123,6 +123,26 @@ model CmsOutcome {
   @@map("cms_outcomes")
 }
 
+// ─── Auth ────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id    String @id @default(cuid())
+  orgId String
+  role  String @default("member")
+  /// SHA-256 of the plaintext key. The plaintext is shown once and never stored.
+  hash       String    @unique
+  /// Safe-to-display fragment (`awe_1a2b…z9`) for listing keys after creation.
+  display    String
+  label      String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  // resolve() looks up by hash (unique); list() reads an org's keys newest-first.
+  @@index([orgId, createdAt])
+  @@map("api_keys")
+}
+
 // ─── Admin audit ─────────────────────────────────────────────────────────
 
 model AuditEvent {
