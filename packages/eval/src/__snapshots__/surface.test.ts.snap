@@ -38,9 +38,13 @@ exports[`SeoSurface snapshots > healthy-nextjs / page.html 1`] = `
   "h1Count": 1,
   "jsonLd": [
     {
+      "raw": "{"@context":"https://schema.org","@type":"Article","headline":"Shipping Fast"}",
       "type": "Article",
       "valid": true,
     },
+  ],
+  "links": [
+    "https://acme.dev/",
   ],
   "openGraph": {
     "og:description": "How our team ships production changes multiple times a day.",
@@ -67,9 +71,13 @@ exports[`SeoSurface snapshots > healthy-shopify-product / page.html 1`] = `
   "h1Count": 1,
   "jsonLd": [
     {
+      "raw": "{"@context":"http://schema.org/","@type":"Product","name":"Merino Crew Sweater","offers":{"@type":"Offer","price":"148.00"}}",
       "type": "Product",
       "valid": true,
     },
+  ],
+  "links": [
+    "https://shop.example.com/",
   ],
   "openGraph": {
     "og:site_name": "Northbound Supply",
@@ -93,6 +101,7 @@ exports[`SeoSurface snapshots > healthy-wordpress / page.html 1`] = `
   "h1Count": 1,
   "jsonLd": [
     {
+      "raw": "{"@context":"https://schema.org","@type":"Restaurant","name":"Cafe Luna"}",
       "type": "Restaurant",
       "valid": true,
     },
@@ -134,6 +143,9 @@ exports[`SeoSurface snapshots > invalid-jsonld / page.html 1`] = `
       "errors": [
         "invalid JSON",
       ],
+      "raw": "
+      {"@context":"https://schema.org","@type":"Product","name":"Pour-Over Kettle",,}
+    ",
       "type": "Unknown",
       "valid": false,
     },

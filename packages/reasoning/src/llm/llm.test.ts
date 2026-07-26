@@ -97,6 +97,61 @@ describe("createLlmReasoner — routing", () => {
     expect(events[0]?.route).toBe("deterministic");
   });
 
+  const invalidBlockSurface: SeoSurface = {
+    ...surface,
+    jsonLd: [{ type: "Unknown", valid: false, errors: ["invalid JSON"], raw: "{bad}" }],
+  };
+
+  it("uses the CAPABLE model to repair a single invalid JSON-LD block", async () => {
+    // The corrected JSON deliberately contains a `<` to exercise script-safe escaping.
+    const client = stubClient(() => ({
+      jsonLd: '{"@context":"https://schema.org","@type":"Product","name":"A <b> widget"}',
+      rationale: "fixed",
+    }));
+    const reasoner = createLlmReasoner({ client, governor: new CostGovernor(1000) });
+
+    const instruction = await reasoner.reason(
+      finding({ issueType: "invalid_structured_data" }),
+      invalidBlockSurface,
+    );
+
+    expect(client.calls[0]?.model).toBe(CAPABLE_MODEL);
+    expect(instruction.canonicalFix.replaceSelector).toBe('script[type="application/ld+json"]');
+    const html = instruction.canonicalFix.html ?? "";
+    // Exactly one wrapping <script>…</script>, and the JSON body's `<` is escaped
+    // to < so it can never break out of the script element.
+    expect(html.split("</script>")).toHaveLength(2);
+    expect(html).toContain("\\u003cb>");
+    expect(html).not.toContain("<b>");
+  });
+
+  it("rejects a repair whose output is not valid JSON-LD (fail soft to guidance)", async () => {
+    const client = stubClient(() => ({ jsonLd: "{not json", rationale: "x" }));
+    const reasoner = createLlmReasoner({ client, governor: new CostGovernor(1000) });
+
+    const instruction = await reasoner.reason(
+      finding({ issueType: "invalid_structured_data" }),
+      invalidBlockSurface,
+    );
+
+    expect(instruction.canonicalFix.html).toBeUndefined();
+  });
+
+  it("does not attempt a repair when the page has multiple JSON-LD blocks", async () => {
+    const client = stubClient(() => ({ jsonLd: "{}", rationale: "x" }));
+    const reasoner = createLlmReasoner({ client, governor: new CostGovernor(1000) });
+
+    await reasoner.reason(finding({ issueType: "invalid_structured_data" }), {
+      ...surface,
+      jsonLd: [
+        { type: "Product", valid: true, raw: "{}" },
+        { type: "Unknown", valid: false, raw: "{bad}" },
+      ],
+    });
+
+    expect(client.calls).toHaveLength(0); // ambiguous target — no model call
+  });
+
   it("passes page text through so copy is grounded in real content", async () => {
     const client = stubClient(() => ({
       value: "A Gooseneck Kettle For Pour-Over",

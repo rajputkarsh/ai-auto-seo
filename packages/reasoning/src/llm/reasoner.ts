@@ -16,6 +16,12 @@ const IntentClassification = z.object({
   reason: z.string(),
 });
 
+/** The capable model's job for structured data: return corrected JSON-LD. */
+const RepairedJsonLd = z.object({
+  jsonLd: z.string(),
+  rationale: z.string(),
+});
+
 /**
  * Issues where a model can author something a rule cannot: real, page-specific
  * copy. Everything else stays on the deterministic path — that routing is the
@@ -81,6 +87,9 @@ export function createLlmReasoner(options: LlmReasonerOptions): Reasoner {
         }
         if (finding.issueType === "noindex_unexpected") {
           return await classifyIntent(finding, surface, context, base, client, governor, onEvent);
+        }
+        if (finding.issueType === "invalid_structured_data") {
+          return await repairStructuredData(finding, surface, base, client, governor, onEvent);
         }
       } catch (error) {
         onEvent?.({
@@ -205,6 +214,99 @@ async function classifyIntent(
     expectedImpact: "Low",
     whyItMatters: `${base.whyItMatters} This page looks intentionally excluded (${result.value.reason}) — confirm before changing it.`,
   };
+}
+
+/**
+ * Capable model: rewrite a single broken JSON-LD block into valid JSON-LD.
+ *
+ * This is the one detection whose fix genuinely needs generation — valid
+ * structured data can't be authored from a rule. It is deliberately conservative:
+ *  - it only fires when the page has EXACTLY ONE JSON-LD block (so the in-place
+ *    replace is unambiguous); multiple blocks fall back to guidance;
+ *  - the model's output must parse as JSON AND declare a valid `@type`, or the
+ *    fix is discarded (fail soft to the recommendation);
+ *  - `<` is escaped to `<` so the emitted `<script>` can't be broken out of.
+ * The pipeline's patch gate re-extracts and verifies regardless, so a bad repair
+ * can never ship — this just gives the model a clean, safe shot at a real fix.
+ */
+async function repairStructuredData(
+  finding: Finding,
+  surface: SeoSurface,
+  base: RemediationInstruction,
+  client: LlmClient,
+  governor: CostGovernor,
+  onEvent?: (e: LlmReasonerEvent) => void,
+): Promise<RemediationInstruction> {
+  const blocks = surface.jsonLd ?? [];
+  const broken = blocks[0];
+  // Only the unambiguous single-block case; otherwise the replace could target
+  // the wrong script. Multi-block pages stay on the deterministic guidance.
+  if (blocks.length !== 1 || !broken || broken.valid || !broken.raw) {
+    onEvent?.({
+      issueType: finding.issueType,
+      route: "deterministic",
+      reason: "not a single repairable block",
+    });
+    return base;
+  }
+
+  const result = await client.call({
+    model: CAPABLE_MODEL,
+    effort: "low",
+    maxTokens: 8000,
+    schema: RepairedJsonLd,
+    system:
+      "You repair broken schema.org JSON-LD. Return ONLY the corrected JSON-LD object as a JSON string — valid JSON, with an @context and a valid @type. Preserve the author's evident intent and real values; do not invent facts.",
+    user: [
+      `This JSON-LD block is invalid (${(broken.errors ?? []).join("; ") || "malformed"}). Fix it.`,
+      `URL: ${surface.url}`,
+      `Broken block:\n${broken.raw}`,
+    ].join("\n"),
+  });
+
+  const costCents = governor.record(result.model, result.usage);
+  const repaired = parseValidJsonLd(result.value.jsonLd);
+  if (!repaired) {
+    onEvent?.({
+      issueType: finding.issueType,
+      route: "capable",
+      reason: "rejected: model output was not valid JSON-LD",
+      costCents,
+      model: result.model,
+    });
+    return base;
+  }
+
+  onEvent?.({ issueType: finding.issueType, route: "capable", costCents, model: result.model });
+  return {
+    ...base,
+    canonicalFix: {
+      html: `<script type="application/ld+json">\n${repaired}\n</script>`,
+      replaceSelector: 'script[type="application/ld+json"]',
+      diffHint: result.value.rationale,
+    },
+  };
+}
+
+/**
+ * Parse a candidate JSON-LD string and confirm it is valid the same way the
+ * extractor judges validity (object/array of nodes each carrying `@type`).
+ * Returns the re-serialized, script-safe JSON, or null if it doesn't qualify.
+ */
+function parseValidJsonLd(candidate: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+  const nodes = Array.isArray(parsed) ? parsed : [parsed];
+  if (nodes.length === 0) return null;
+  for (const node of nodes) {
+    if (!node || typeof node !== "object" || !("@type" in node)) return null;
+  }
+  // `<` keeps the JSON valid while making a literal `</script>` impossible.
+  return JSON.stringify(parsed, null, 2).replace(/</g, "\\u003c");
 }
 
 function withinLimits(value: string, limits?: { min: number; max: number }): boolean {

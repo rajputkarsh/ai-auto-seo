@@ -2,7 +2,7 @@ import { resolveTxt } from "node:dns/promises";
 import { type AuthMode, createApiKeyStore } from "@awe/auth";
 import { createBillingStores, QuotaGuard, resolveEntitlements } from "@awe/billing";
 import { getConfig } from "@awe/config";
-import { crawlSite, fetchCrawl } from "@awe/crawler";
+import { checkLinks, crawlSite, fetchCrawl, fetchLinkProber } from "@awe/crawler";
 import {
   type VerificationDeps,
   type VerificationMethod,
@@ -50,6 +50,8 @@ const scanBody = z.object({
   url: z.string().url(),
   /** Rendered HTML. When omitted, the server fetches the URL itself. */
   html: z.string().min(1).optional(),
+  /** Opt-in: probe the page's outbound links and report `broken_link`. */
+  checkLinks: z.boolean().optional(),
 });
 
 const propertyBody = z.object({ url: z.string().url() });
@@ -59,7 +61,13 @@ const siteScanBody = z.object({
   maxPages: z.coerce.number().int().positive().max(200).optional(),
   concurrency: z.coerce.number().int().positive().max(10).optional(),
   minDelayMs: z.coerce.number().int().nonnegative().max(10_000).optional(),
+  /** Opt-in: probe each page's outbound links and report `broken_link`. */
+  checkLinks: z.boolean().optional(),
 });
+
+/** A link checker backed by real HTTP probes (opt-in — extra network I/O). */
+const linkCheckerFor = (enabled?: boolean) =>
+  enabled ? (links: string[]) => checkLinks(links, { prober: fetchLinkProber() }) : undefined;
 
 const verifyBody = z.object({
   url: z.string().url(),
@@ -218,7 +226,10 @@ app.post("/scan", async (req, reply) => {
 
   const startedAt = Date.now();
   const scan = reasonerForScan();
-  const result = await runScan(html, url, { reasoner: scan.reasoner });
+  const result = await runScan(html, url, {
+    reasoner: scan.reasoner,
+    linkChecker: linkCheckerFor(parsed.data.checkLinks),
+  });
 
   // Record usage only after the work succeeded — a failed scan is never billed.
   await usageMeter.record(gate.orgId, {
@@ -289,6 +300,7 @@ app.post("/site-scan", async (req, reply) => {
     siteWide: crawl.siteWide,
     previous,
     reasoner: scan.reasoner,
+    linkChecker: linkCheckerFor(parsed.data.checkLinks),
   });
 
   await scanStore.saveScan({

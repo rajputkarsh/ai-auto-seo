@@ -17,6 +17,7 @@ import {
   recommendationAdapter,
 } from "@awe/remediation";
 import { evaluate } from "@awe/rules";
+import { brokenLinkFinding, type LinkChecker } from "./links";
 
 export interface ScanResultItem {
   finding: Finding;
@@ -62,6 +63,12 @@ export interface ScanOptions {
   previous?: SeoSurface;
   /** Property-level facts (robots.txt / sitemap) fetched once per site. */
   siteWide?: SeoSurface["siteWide"];
+  /**
+   * When provided, the page's outbound links are probed and any that resolve to
+   * an error become a `broken_link` finding. Opt-in because it is extra network
+   * I/O; omitted, a scan stays a pure, offline function of the HTML.
+   */
+  linkChecker?: LinkChecker;
 }
 
 export async function runScan(
@@ -74,7 +81,9 @@ export async function runScan(
   if (options.siteWide) surface.siteWide = options.siteWide;
 
   const regressions = options.previous ? diffSurfaces(options.previous, surface) : [];
-  const findings = prioritize(mergeFindings(evaluate([surface]), regressions));
+  const base = mergeFindings(evaluate([surface]), regressions);
+  const linkFinding = await checkPageLinks(surface, options.linkChecker);
+  const findings = prioritize(linkFinding ? [...base, linkFinding] : base);
 
   const result: ScanResult = {
     url,
@@ -89,6 +98,19 @@ export async function runScan(
   );
   if (combined) result.combinedPatch = combined;
   return result;
+}
+
+/**
+ * Probe a page's links (when a checker is supplied) and fold the result into a
+ * single `broken_link` finding. Shared by the single-page and whole-site paths.
+ */
+export async function checkPageLinks(
+  surface: SeoSurface,
+  linkChecker?: LinkChecker,
+): Promise<Finding | null> {
+  if (!linkChecker || !surface.links?.length) return null;
+  const statuses = await linkChecker(surface.links);
+  return brokenLinkFinding(surface, statuses);
 }
 
 /**

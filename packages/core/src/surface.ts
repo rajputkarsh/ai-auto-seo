@@ -20,6 +20,12 @@ export interface SeoSurface {
   jsonLd?: JsonLdBlock[];
   h1Count?: number;
   hreflang?: HreflangEntry[];
+  /**
+   * Outbound links found on the page (absolute http(s), deduped). Used by the
+   * broken-link check, which is an opt-in I/O step — the surface only records the
+   * targets, never their status, so it stays a pure snapshot of the markup.
+   */
+  links?: string[];
   /** Property-level facts fetched once per site, not per page. */
   siteWide?: SiteWideSurface;
 }
@@ -42,6 +48,8 @@ export interface JsonLdBlock {
   type: string;
   valid: boolean;
   errors?: string[];
+  /** The block's original script contents — kept so a reasoner can repair it. */
+  raw?: string;
 }
 
 export interface HreflangEntry {

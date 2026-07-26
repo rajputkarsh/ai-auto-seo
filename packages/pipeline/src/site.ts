@@ -3,7 +3,8 @@ import { extractSurface } from "@awe/extractor";
 import { diffSurfaces, mergeFindings } from "@awe/graph";
 import { deterministicReasoner, type Reasoner } from "@awe/reasoning";
 import { evaluate } from "@awe/rules";
-import { prioritize, remediate, type ScanResultItem } from "./pipeline";
+import type { LinkChecker } from "./links";
+import { checkPageLinks, prioritize, remediate, type ScanResultItem } from "./pipeline";
 
 /** One crawled page, as produced by `@awe/crawler.crawlSite`. */
 export interface SitePage {
@@ -18,6 +19,8 @@ export interface SiteScanOptions {
   siteWide?: SiteWideSurface;
   /** Prior surfaces keyed by URL, enabling regression detection per page. */
   previous?: Record<string, SeoSurface>;
+  /** When provided, each page's outbound links are probed for `broken_link`. */
+  linkChecker?: LinkChecker;
 }
 
 export interface PageScanResult {
@@ -71,7 +74,9 @@ export async function runSiteScan(
       const surface = surfaces[index];
       if (!surface) return { url: page.url, surface: { url: page.url }, items: [] };
 
-      const findings = prioritize(findingsByUrl.get(page.url) ?? []);
+      const linkFinding = await checkPageLinks(surface, options.linkChecker);
+      const pageFindings = findingsByUrl.get(page.url) ?? [];
+      const findings = prioritize(linkFinding ? [...pageFindings, linkFinding] : pageFindings);
       return {
         url: page.url,
         surface,

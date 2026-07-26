@@ -59,6 +59,8 @@ const WHY: Partial<Record<IssueType, string>> = {
     "A page that previously resolved now returns an error, so it will be dropped from the index and any links pointing to it are wasted.",
   missing_structured_data:
     "Structured data that previously earned rich results has been removed, so those enhanced listings will disappear.",
+  broken_link:
+    "Links that resolve to an error waste crawl budget, leak link equity into dead ends, and frustrate users who click them.",
 };
 
 const CONFIDENCE: Partial<Record<IssueType, number>> = {
@@ -74,6 +76,8 @@ const CONFIDENCE: Partial<Record<IssueType, number>> = {
   missing_h1: 0.93,
   malformed_canonical: 0.9,
   duplicate_title: 0.85,
+  // Observed non-2xx from an HTTP probe — an objective, high-confidence signal.
+  broken_link: 0.95,
   // Multiple H1s are legal under HTML5 sectioning — advisory, so a lower prior.
   multiple_h1: 0.6,
 };
@@ -196,6 +200,13 @@ function canonicalFix(
       return {
         diffHint:
           "Restore the JSON-LD block that was removed, then confirm with the Rich Results test.",
+      };
+    // The correct destination can't be inferred from the page alone (only that
+    // the current target is dead), so this is guidance, not an auto-patch.
+    case "broken_link":
+      return {
+        diffHint:
+          "Update each broken link to its correct destination, or remove the link. If the target moved, point it at the new URL; if it's gone, drop it.",
       };
     default:
       return {};

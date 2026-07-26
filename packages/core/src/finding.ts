@@ -14,7 +14,9 @@ export type IssueType =
   | "sitemap_missing"
   | "robots_txt_blocks_crawling"
   /** Page returned 2xx on a previous scan and now returns an error status. */
-  | "page_unavailable";
+  | "page_unavailable"
+  /** One or more outbound links on the page resolve to a non-2xx status. */
+  | "broken_link";
 
 /**
  * A raw problem detected by a rule. Findings are the output of detection and the

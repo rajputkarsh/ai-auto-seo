@@ -4,7 +4,7 @@
 
 **Status: ✅ COMPLETE** (except deployment, which needs infrastructure credentials).
 
-Delivered: universal detection across **11 issue types / 7 rules**, deterministic reasoning, both remediation rails with **insert *and* replace-in-place** patches, **patch verification**, multi-fix batching, prioritization, site-wide robots.txt/sitemap analysis, **ownership verification**, a hardened API (validation, structured errors, rate limiting, metrics), and a CLI.
+Delivered: universal detection across **12 issue types / 7 rules** (plus an opt-in broken-link probe), deterministic reasoning, both remediation rails with **insert *and* replace-in-place** patches, **patch verification**, multi-fix batching, prioritization, site-wide robots.txt/sitemap analysis, **ownership verification**, a hardened API (validation, structured errors, rate limiting, metrics), and a CLI. The `invalid_structured_data` auto-fix and `broken_link` detection landed later (see §Closed since).
 
 **Verified:** 94 tests green · 19 golden cases / 21 pages at **100% precision & recall** · 21 surface snapshots · clean lint + typecheck · CI-enforced.
 
@@ -191,8 +191,9 @@ Adding a rule = new `Rule` + golden fixtures + register in `defaultRules`.
 - ✅ **Patch verification.** Every patch is applied, re-extracted and re-evaluated before it is shown: the target issue must disappear and no new issue type may appear, or the patch is discarded and the item reports `patchUnavailable`. Same principle as the Phase-3 sandbox build gate, at near-zero cost.
 - ✅ **Multi-fix batching.** `ScanResult.combinedPatch` applies every automatable fix in one diff (replacements before insertions), itself verified end-to-end.
 
-**Remaining ☐**
-- ☐ Auto-fix `invalid_structured_data` — valid JSON-LD cannot be authored deterministically from the page alone; a natural first job for the Phase-2 LLM reasoner.
+**Closed since**
+- ✅ Auto-fix `invalid_structured_data` — the LLM reasoner rewrites a single broken JSON-LD block into valid JSON-LD (guarded to the unambiguous one-block case, output must parse and declare a valid `@type`, `<` escaped so it can't break out of the `<script>`), emitted as an in-place replace patch that the same patch gate re-extracts and verifies. Multi-block pages and any un-verifiable repair fall back to guidance.
+- ✅ `broken_link` detection — an opt-in step probes a page's outbound links (`checkLinks: true`) and aggregates any non-2xx targets into one recommendation-only finding. The probe is an injectable seam (`@awe/crawler.checkLinks` + `fetchLinkProber`, concurrency-capped, `HEAD`-then-`GET`); omitted, a scan stays a pure offline function of the HTML.
 
 ---
 

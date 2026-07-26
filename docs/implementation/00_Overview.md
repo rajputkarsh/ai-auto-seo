@@ -78,7 +78,7 @@ Monorepo (pnpm): `packages/*` (libraries) + `apps/*` (services). See the repo `R
 
 ## 7. Current Status
 
-**All phases (0–5) have their verifiable core built and tested** (see each phase's §Status) — **311 passing tests**, a CI-enforced **100%-precision** golden-set eval, clean lint + typecheck, across 22 packages + 4 apps.
+**All phases (0–5) have their verifiable core built and tested** (see each phase's §Status) — **328 passing tests**, a CI-enforced **100%-precision** golden-set eval, clean lint + typecheck, across 22 packages + 4 apps.
 
 - **0–2:** universal detect → reason → remediate pipeline; full issue catalog + ownership verification; continuous monitoring with regression detection; persistence; LLM reasoner; billing/entitlements/usage metering; worker job pipeline; customer-dashboard + isolated superadmin.
 - **3:** framework adapters (static-HTML, Next.js) + sandbox build gate + repo-PR rail + merge-rate tracker.
@@ -88,6 +88,8 @@ Monorepo (pnpm): `packages/*` (libraries) + `apps/*` (services). See the repo `R
 **Rails wired into the product (not just libraries).** The P3 repo and P4 CMS rails are reachable through the running API (`/connections/*`, `/remediate/*`, `/remediate/outcomes`) and the customer dashboard's Integrations page — connect a repo or CMS entry, trigger remediation for a URL, and watch the merge-rate / applied-fix outcomes. **Every persistent store is dual-implemented** (in-memory default + Postgres, chosen by `DATABASE_URL`, proven identical by a shared contract test): scan history, subscriptions, usage metering, PR outcomes, CMS outcomes, API keys, and the admin audit trail — all on the single `@awe/persistence` schema.
 
 **Real authentication** (`@awe/auth`) replaces the earlier `x-awe-org` stand-in: org-scoped API keys (hashed at rest, shown once), a fail-closed 401 hook on every non-public route, `apikey`/`dev` modes (production-safe by default), superadmin key management, and a real dashboard sign-in (key → httpOnly cookie → Bearer).
+
+**Detection catalog completed.** The two remaining gaps are closed: **`broken_link`** detection (opt-in HTTP probe of a page's outbound links, injectable + concurrency-capped) and the **`invalid_structured_data` auto-fix** (LLM repairs a single broken JSON-LD block into a verified in-place patch, guarded and fail-soft). Every persistent store — including API keys — is dual-implemented and contract-tested; the only remaining work is operator-owned deployment (live Postgres/Stripe/GitHub/CMS/Anthropic, Docker, SSO/SOC 2) behind the existing seams.
 
 Every rail honours the same invariant: **it never degrades below the universal Recommendation/Patch rails, and never applies an unvalidated or irreversible change.**
 

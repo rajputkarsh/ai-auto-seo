@@ -22,6 +22,7 @@ export function extractSurface(html: string, url: string, status = 200): SeoSurf
   const twitter = collectMeta($, "name", /^twitter:/i);
   const jsonLd = extractJsonLd($);
   const hreflang = collectHreflang($);
+  const links = collectLinks($, url);
 
   const surface: SeoSurface = {
     url,
@@ -36,7 +37,38 @@ export function extractSurface(html: string, url: string, status = 200): SeoSurf
   if (Object.keys(twitter).length) surface.twitter = twitter;
   if (jsonLd.length) surface.jsonLd = jsonLd;
   if (hreflang.length) surface.hreflang = hreflang;
+  if (links.length) surface.links = links;
   return surface;
+}
+
+/**
+ * Collect outbound links as absolute http(s) URLs, deduped.
+ *
+ * Only real navigations are kept: `mailto:`/`tel:`/`javascript:` and pure
+ * in-page `#fragment` anchors are not "links that can 404". The fragment is
+ * stripped so `/a#x` and `/a#y` probe once. Order is preserved for stable output.
+ */
+function collectLinks($: CheerioAPI, pageUrl: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href")?.trim();
+    if (!href || href.startsWith("#")) return;
+    let resolved: URL;
+    try {
+      resolved = new URL(href, pageUrl);
+    } catch {
+      return;
+    }
+    if (resolved.protocol !== "http:" && resolved.protocol !== "https:") return;
+    resolved.hash = "";
+    const normalized = resolved.toString();
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      out.push(normalized);
+    }
+  });
+  return out;
 }
 
 /**
@@ -109,16 +141,16 @@ function extractJsonLd($: CheerioAPI): JsonLdBlock[] {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      blocks.push({ type: "Unknown", valid: false, errors: ["invalid JSON"] });
+      blocks.push({ type: "Unknown", valid: false, errors: ["invalid JSON"], raw });
       return;
     }
     const nodes = Array.isArray(parsed) ? parsed : [parsed];
     for (const node of nodes) {
       if (node && typeof node === "object" && "@type" in node) {
         const rawType = (node as Record<string, unknown>)["@type"];
-        blocks.push({ type: typeof rawType === "string" ? rawType : "Unknown", valid: true });
+        blocks.push({ type: typeof rawType === "string" ? rawType : "Unknown", valid: true, raw });
       } else {
-        blocks.push({ type: "Unknown", valid: false, errors: ["missing @type"] });
+        blocks.push({ type: "Unknown", valid: false, errors: ["missing @type"], raw });
       }
     }
   });
